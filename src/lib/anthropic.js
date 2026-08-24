@@ -71,6 +71,11 @@ const MAX_TOOL_ITERATIONS = 10;
 // against the 5m write's 0.25x and the measured traffic does not read it back
 // often enough to earn the difference (see the header note).
 const DEFAULT_PREFIX_CACHE_TTL = "5m";
+// ANTHROPIC_CACHE_TTL values that mean "do not cache at all on this worker".
+// Spelling variants are accepted because getting this wrong fails SILENTLY:
+// an unrecognised value would sail through as a literal ttl and the API would
+// reject the request, or worse, keep caching while someone believes it stopped.
+const CACHE_OFF_VALUES = new Set(["off", "none", "no", "false", "0", "disabled"]);
 // Retry the idempotent HTTP POST (not tool execution) on transient failures.
 // 3 attempts with 1s then 5s backoff; classifier retries 429/5xx + network tells.
 const RETRY_ATTEMPTS = 3;
@@ -146,6 +151,10 @@ export function applyMessageCache(messages, env) {
     if (messages[i].role === "assistant") { anchorIdx = i; break; }
   }
   const anchorControl = prefixCacheControl(env);
+  // Caching disabled for this worker: no anchor AND no tail breakpoint. The
+  // tail one is what writes the cache, so leaving it behind would keep paying
+  // the write surcharge on a worker that just opted out.
+  if (!anchorControl) return messages;
   return messages.map((m, i) => {
     if (i === lastIdx) return markMessage(m, { type: "ephemeral" });
     if (i === anchorIdx) return markMessage(m, anchorControl);
@@ -191,11 +200,20 @@ export function withSessionContext(messages, sessionContext) {
  * ANTHROPIC_CACHE_TTL="1h" on a worker to opt that worker into the long TTL
  * once its write:read ratio is proven to sit under 0.90.
  *
+ * ANTHROPIC_CACHE_TTL="off" disables caching for the worker entirely, and it
+ * is the right setting for a bot whose calls are ONE-SHOT: a cron stage, a
+ * nightly summary, a single FleetView question. Those read the cache back zero
+ * times, so every write is a 1.25x surcharge on tokens that were never reused.
+ * Measured 2026-08-24: dexter-worker wrote 31.9k cache tokens across a week
+ * and read 0, a pure loss. A longer TTL does not fix that, it quadruples it.
+ *
  * @param {object} env - Worker env
- * @returns {{type: "ephemeral", ttl?: string}} cache_control value
+ * @returns {{type: "ephemeral", ttl?: string}|null} cache_control value, or
+ *   null when caching is disabled for this worker
  */
 function prefixCacheControl(env) {
   const ttl = (env?.ANTHROPIC_CACHE_TTL || DEFAULT_PREFIX_CACHE_TTL).trim();
+  if (CACHE_OFF_VALUES.has(ttl.toLowerCase())) return null;
   // "5m" is the API default; sending it explicitly is legal but noisier in
   // request diffs, so collapse it to the bare form.
   return ttl === "5m" ? { type: "ephemeral" } : { type: "ephemeral", ttl };
@@ -212,6 +230,7 @@ function prefixCacheControl(env) {
 function applyCacheToTools(tools, env) {
   if (!Array.isArray(tools) || tools.length === 0) return tools;
   const cacheControl = prefixCacheControl(env);
+  if (!cacheControl) return tools;
   return tools.map((t, i) =>
     i === tools.length - 1 ? { ...t, cache_control: cacheControl } : t
   );
@@ -459,12 +478,14 @@ export async function callAnthropic(env, systemPrompt, messages, options = {}) {
 export function buildSystemBlocks(systemPrompt, env) {
   const cacheControl = prefixCacheControl(env);
   if (typeof systemPrompt === "string") {
-    return [{ type: "text", text: systemPrompt, cache_control: cacheControl }];
+    return cacheControl
+      ? [{ type: "text", text: systemPrompt, cache_control: cacheControl }]
+      : [{ type: "text", text: systemPrompt }];
   }
 
   return systemPrompt
     .filter((seg) => seg && seg.text)
-    .map((seg) => (seg.cache
+    .map((seg) => (seg.cache && cacheControl
       ? { type: "text", text: seg.text, cache_control: cacheControl }
       : { type: "text", text: seg.text }));
 }
