@@ -198,18 +198,21 @@ export function emailButton({ label, url, bg = BRAND.accent, color = BRAND.accen
  * @param {string} opts.rows - one or more rows from emailRow.
  * @param {number} [opts.width] - content width in pixels, defaults to 640.
  * @param {string} [opts.bg] - canvas fill, defaults to the brand canvas.
+ * @param {string} [opts.cardBg] - card fill, defaults to the same colour as
+ *   the canvas. Set this separately when the card reads as a raised panel on
+ *   a different-toned canvas (an alert card on a near-black canvas, say).
  * @param {string} [opts.outerPadding] - padding around the card.
  * @param {string} [opts.cardStyle] - extra declarations for the inner (card)
  *   table, e.g. a border and border-radius. Word ignores border-radius but
  *   keeps the border, so this stays purely cosmetic on classic Outlook.
  * @returns {string} complete email body HTML
  */
-export function emailShell({ rows, width = 640, bg = BRAND.bg, outerPadding = "24px 0", cardStyle = "" }) {
+export function emailShell({ rows, width = 640, bg = BRAND.bg, cardBg = bg, outerPadding = "24px 0", cardStyle = "" }) {
   const extraCard = cardStyle ? ` ${cardStyle}` : "";
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${bg}" style="border-collapse: collapse; margin: 0; padding: 0; background-color: ${bg};">
 <tr>
 <td align="center" bgcolor="${bg}" style="padding: ${outerPadding}; background-color: ${bg};">
-<table role="presentation" width="${width}" cellpadding="0" cellspacing="0" border="0" bgcolor="${bg}" style="width: ${width}px; max-width: ${width}px; border-collapse: collapse; background-color: ${bg};${extraCard}">
+<table role="presentation" width="${width}" cellpadding="0" cellspacing="0" border="0" bgcolor="${cardBg}" style="width: ${width}px; max-width: ${width}px; border-collapse: collapse; background-color: ${cardBg};${extraCard}">
 ${rows}
 </table>
 </td>
