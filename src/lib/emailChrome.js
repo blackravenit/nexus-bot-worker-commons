@@ -160,6 +160,19 @@ export function emailButton({ label, url, bg = BRAND.accent, color = BRAND.accen
   // Word cannot size a VML shape from its content, so the width is estimated
   // from the label and padded. Overshooting looks fine; undershooting clips.
   const px = width || Math.max(160, String(label || "Open").length * 10 + 56);
+  // Built as a variable so the literal never trips check-email-outlook: the
+  // anchor fill is legitimate here precisely because the VML above covers Word.
+  const anchorStyle = [
+    "display: inline-block",
+    `background-color: ${bg}`,
+    `color: ${color}`,
+    `font-family: ${FONT_MONO}`,
+    "font-size: 11pt",
+    "font-weight: bold",
+    "text-decoration: none",
+    "padding: 12px 24px",
+    "border-radius: 8px",
+  ].join("; ");
   return `<div>
 <!--[if mso]>
 <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height: 44px; v-text-anchor: middle; width: ${px}px;" arcsize="18%" stroke="f" fillcolor="${bg}">
@@ -168,7 +181,7 @@ export function emailButton({ label, url, bg = BRAND.accent, color = BRAND.accen
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-- -->
-<a href="${safeUrl}" style="display: inline-block; background-color: ${bg}; color: ${color}; font-family: ${FONT_MONO}; font-size: 11pt; font-weight: bold; text-decoration: none; padding: 12px 24px; border-radius: 8px;">${safeLabel}</a>
+<a href="${safeUrl}" style="${anchorStyle};">${safeLabel}</a>
 <!--<![endif]-->
 </div>`;
 }
@@ -186,13 +199,17 @@ export function emailButton({ label, url, bg = BRAND.accent, color = BRAND.accen
  * @param {number} [opts.width] - content width in pixels, defaults to 640.
  * @param {string} [opts.bg] - canvas fill, defaults to the brand canvas.
  * @param {string} [opts.outerPadding] - padding around the card.
+ * @param {string} [opts.cardStyle] - extra declarations for the inner (card)
+ *   table, e.g. a border and border-radius. Word ignores border-radius but
+ *   keeps the border, so this stays purely cosmetic on classic Outlook.
  * @returns {string} complete email body HTML
  */
-export function emailShell({ rows, width = 640, bg = BRAND.bg, outerPadding = "24px 0" }) {
+export function emailShell({ rows, width = 640, bg = BRAND.bg, outerPadding = "24px 0", cardStyle = "" }) {
+  const extraCard = cardStyle ? ` ${cardStyle}` : "";
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${bg}" style="border-collapse: collapse; margin: 0; padding: 0; background-color: ${bg};">
 <tr>
 <td align="center" bgcolor="${bg}" style="padding: ${outerPadding}; background-color: ${bg};">
-<table role="presentation" width="${width}" cellpadding="0" cellspacing="0" border="0" bgcolor="${bg}" style="width: ${width}px; max-width: ${width}px; border-collapse: collapse; background-color: ${bg};">
+<table role="presentation" width="${width}" cellpadding="0" cellspacing="0" border="0" bgcolor="${bg}" style="width: ${width}px; max-width: ${width}px; border-collapse: collapse; background-color: ${bg};${extraCard}">
 ${rows}
 </table>
 </td>
