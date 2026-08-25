@@ -145,15 +145,39 @@ export function emailHeading({
  * from every other client by the conditional comment, and the anchor is hidden
  * from Outlook by the inverse comment. Exactly one of the two ever renders.
  *
+ * The type options exist because the fleet is not one brand. White label
+ * instances render in a sans stack with their own button metrics, and forcing
+ * the Black Raven mono face on them would be a visible design change dressed up
+ * as a rendering fix. Pass the calling template's own values.
+ *
  * @param {object} opts
  * @param {string} opts.label - button text, escaped internally.
  * @param {string} opts.url - destination, escaped internally.
  * @param {string} [opts.bg] - fill, defaults to the accent.
  * @param {string} [opts.color] - label colour, defaults to the on-accent ink.
  * @param {number} [opts.width] - override the estimated pixel width.
+ * @param {string} [opts.font] - label font stack, defaults to the mono body face.
+ * @param {string} [opts.fontSize] - CSS font-size, defaults to 11pt.
+ * @param {string} [opts.weight] - CSS font-weight, defaults to bold.
+ * @param {string} [opts.padding] - CSS padding shorthand, defaults to 12px 24px.
+ * @param {string} [opts.radius] - CSS border-radius, defaults to 8px. Word drops
+ *   it and squares the corners; every other client honours it.
+ * @param {number} [opts.height] - VML shape height in pixels, defaults to 44.
  * @returns {string} empty string when no url is supplied
  */
-export function emailButton({ label, url, bg = BRAND.accent, color = BRAND.accentInk, width }) {
+export function emailButton({
+  label,
+  url,
+  bg = BRAND.accent,
+  color = BRAND.accentInk,
+  width,
+  font = FONT_MONO,
+  fontSize = "11pt",
+  weight = "bold",
+  padding = "12px 24px",
+  radius = "8px",
+  height = 44,
+}) {
   if (!url) return "";
   const safeUrl = escapeHtml(url);
   const safeLabel = escapeHtml(label || "Open");
@@ -166,18 +190,21 @@ export function emailButton({ label, url, bg = BRAND.accent, color = BRAND.accen
     "display: inline-block",
     `background-color: ${bg}`,
     `color: ${color}`,
-    `font-family: ${FONT_MONO}`,
-    "font-size: 11pt",
-    "font-weight: bold",
+    `font-family: ${font}`,
+    `font-size: ${fontSize}`,
+    `font-weight: ${weight}`,
     "text-decoration: none",
-    "padding: 12px 24px",
-    "border-radius: 8px",
+    `padding: ${padding}`,
+    `border-radius: ${radius}`,
   ].join("; ");
+  // The VML label deliberately uses a web safe face. Outlook renders VML text
+  // with no webfont available, so naming the brand face there would silently
+  // fall back anyway and only the metrics would drift.
   return `<div>
 <!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height: 44px; v-text-anchor: middle; width: ${px}px;" arcsize="18%" stroke="f" fillcolor="${bg}">
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height: ${height}px; v-text-anchor: middle; width: ${px}px;" arcsize="18%" stroke="f" fillcolor="${bg}">
 <w:anchorlock/>
-<center style="color: ${color}; font-family: Arial, sans-serif; font-size: 11pt; font-weight: bold;">${safeLabel}</center>
+<center style="color: ${color}; font-family: Arial, sans-serif; font-size: ${fontSize}; font-weight: ${weight};">${safeLabel}</center>
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-- -->
