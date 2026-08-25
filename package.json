@@ -37,7 +37,8 @@
     "./personas/courtney": "./src/personas/courtney.js",
     "./personas/faceGuards": "./src/personas/faceGuards.js",
     "./lib/brand": "./src/lib/brand.js",
-    "./lib/eol": "./src/lib/eol.js"
+    "./lib/eol": "./src/lib/eol.js",
+    "./lib/emailChrome": "./src/lib/emailChrome.js"
   },
   "files": [
     "src/",
