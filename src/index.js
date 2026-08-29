@@ -35,6 +35,7 @@ export { researchWatercoolerShare, collectSearchResultUrls, verifySharedUrl, par
 export { judgeContent, judgeContentWithRedraft, parseJudgeVerdict, buildRetryFeedback, FLEET_RUBRICS, JUDGE_PASS_THRESHOLD, SURFACE_PASS_THRESHOLDS, resolvePassThreshold } from "./lib/contentJudge.js";
 export { buildActionBreadcrumb, summarizeToolCall, isReadonlyToolName, looksLikeUnbackedClaim } from "./lib/actionTrace.js";
 export { verifyNexusSignature, timingSafeEqual } from "./lib/callbackSign.js";
+export { verifyTwilioSignature } from "./lib/twilioSig.js";
 export { buildVoicePersona, handleVoicePersona } from "./lib/voicePersona.js";
 export { parseCommand } from "./lib/commandParser.js";
 export { loadHistory, appendHistory } from "./lib/history.js";

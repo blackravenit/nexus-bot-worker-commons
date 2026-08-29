@@ -13,6 +13,7 @@
     "./lib/contentJudge": "./src/lib/contentJudge.js",
     "./lib/actionTrace": "./src/lib/actionTrace.js",
     "./lib/callbackSign": "./src/lib/callbackSign.js",
+    "./lib/twilioSig": "./src/lib/twilioSig.js",
     "./lib/voicePersona": "./src/lib/voicePersona.js",
     "./lib/avatarPersona": "./src/lib/avatarPersona.js",
     "./lib/commandParser": "./src/lib/commandParser.js",
