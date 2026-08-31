@@ -399,13 +399,17 @@ export async function callAnthropic(env, systemPrompt, messages, options = {}) {
     }
   }
 
-  // With server tools the text can sit after tool_use/result blocks AND be
-  // split into citation fragments, so join ALL text blocks of the final
-  // response with no separator (a "\n" join would break lines mid-sentence).
-  const text = serverTools
-    ? (data?.content || []).filter(b => b.type === "text").map(b => b.text).join("")
-    : data?.content?.[0]?.text;
-  if (typeof text !== "string" || (serverTools && !text)) {
+  // Join ALL text blocks with no separator (a "\n" join would break lines
+  // mid-sentence). Needed with server tools, where the text sits after
+  // tool_use/result blocks and splits into citation fragments, but it is also
+  // the only safe read in general: a response can open with a thinking block,
+  // and content[0].text is then undefined. Reading index 0 silently paused
+  // Wren's event-intro cadences (2026-08-19) and killed her scheduling drafts
+  // outright (2026-08-31). Thinking is pinned off by default here, so this is
+  // the belt to that braces, and it is what makes options.thinking safe to use.
+  const blocks = (data?.content || []).filter(b => b?.type === "text" && typeof b.text === "string");
+  const text = blocks.map(b => b.text).join("");
+  if (blocks.length === 0 || (serverTools && !text)) {
     throw new Error(`[anthropic] unexpected response shape: ${JSON.stringify(data).slice(0, 600)}`);
   }
   if (typeof options.onUsage === "function" && data.usage) {
