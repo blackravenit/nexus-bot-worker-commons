@@ -234,20 +234,6 @@ export function crmRecordUrl(env, kind, id) {
   return `${base}/#${page}/${encodeURIComponent(id)}`;
 }
 
-// ── DocuSign (env.DOCUSIGN_APP_BASE, default app.docusign.com) ───────────────
-
-/**
- * DocuSign envelope details page.
- * @param {object} env
- * @param {string} envelopeId
- * @returns {string|null}
- */
-export function docusignEnvelopeUrl(env, envelopeId) {
-  if (!envelopeId) return null;
-  const base = env?.DOCUSIGN_APP_BASE || "https://app.docusign.com";
-  return joinBase(base, `documents/details/${encodeURIComponent(envelopeId)}`);
-}
-
 // ── Datto (env.DATTO_PORTAL_BASE_URL) ────────────────────────────────────────
 
 /**

@@ -105,7 +105,6 @@ export {
   ninjaDeviceUrl,
   ninjaTicketUrl,
   crmRecordUrl,
-  docusignEnvelopeUrl,
   dattoDeviceUrl,
   boxFileUrl,
   cdwProductUrl,

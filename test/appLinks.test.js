@@ -15,7 +15,6 @@ import {
   ninjaDeviceUrl,
   ninjaTicketUrl,
   crmRecordUrl,
-  docusignEnvelopeUrl,
   dattoDeviceUrl,
   boxFileUrl,
   cdwProductUrl,
@@ -139,19 +138,7 @@ test("crmRecordUrl builds hash deep-links (kind -> CRM page) and null otherwise"
   assert.equal(crmRecordUrl({}, "clients", "c_1"), null);
 });
 
-// ── DocuSign / Datto / Box / CDW ─────────────────────────────────────────────
-
-test("docusignEnvelopeUrl uses default base when var unset", () => {
-  assert.equal(
-    docusignEnvelopeUrl({}, "env_5"),
-    "https://app.docusign.com/documents/details/env_5",
-  );
-  assert.equal(
-    docusignEnvelopeUrl({ DOCUSIGN_APP_BASE: "https://demo.docusign.net" }, "env_5"),
-    "https://demo.docusign.net/documents/details/env_5",
-  );
-  assert.equal(docusignEnvelopeUrl({}, null), null);
-});
+// ── Datto / Box / CDW ─────────────────────────────────────────────────────────
 
 test("dattoDeviceUrl null without portal base", () => {
   assert.equal(dattoDeviceUrl({}, "SER123"), null);
