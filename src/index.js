@@ -72,6 +72,7 @@ export {
   shouldMirrorToHomeChannel,
   FLEETVIEW_SOURCE,
 } from "./lib/fleetviewDelivery.js";
+export { applyVoicePronunciation } from "./lib/ttsPronunciation.js";
 export { crmReadTools, crmReadHandlers } from "./lib/crmCodes.js";
 export {
   kbProfileReadTools, kbProfileReadHandlers,
