@@ -602,6 +602,55 @@ export async function disableMessageButtons(env, messageId, target = {}, options
 }
 
 /**
+ * Mark one of a card's action buttons as clicked on behalf of a human who did
+ * the equivalent thing OUTSIDE Nexus, so the card renders the same check glyph
+ * and "-- <name>" attribution a native click would. Example: a tech claims a
+ * ticket on the Desk board, so the mirror card's "Take" button lights up with
+ * their name instead of staying live.
+ *
+ * Nexus resolves the person by upn first, then display_name (case-insensitive,
+ * active humans only). When nobody matches it disables the button instead, so
+ * the stale action still goes away; the result's mode says which happened.
+ * Idempotent per user.
+ *
+ * @param {object} env
+ * @param {string} messageId - Nexus message id returned by postToNexus
+ * @param {object} who
+ * @param {string} who.buttonId - the button_id string attached via attachButtons
+ * @param {string} [who.upn] - the person's UPN / email
+ * @param {string} [who.displayName] - fallback display name
+ * @param {object} [options]
+ * @param {string} [options.nexusKeyEnvVar] - env var name holding the API key
+ * @returns {Promise<{mode: string, rows: Array}|null>} outcome or null on error
+ */
+export async function markButtonClicked(env, messageId, who = {}, options = {}) {
+  const apiKey = resolveNexusKey(env, options);
+  if (!apiKey || !env.NEXUS_BASE_URL || !messageId) return null;
+  const buttonId = String(who.buttonId || "").trim();
+  const upn = String(who.upn || "").trim();
+  const displayName = String(who.displayName || "").trim();
+  if (!buttonId || (!upn && !displayName)) return null;
+
+  try {
+    const result = await _bearerPostWithRetry(
+      `${env.NEXUS_BASE_URL}/api/bot/messages/${messageId}/buttons/mark-clicked`,
+      { button_id: buttonId, ...(upn ? { upn } : {}), ...(displayName ? { display_name: displayName } : {}) },
+      apiKey,
+    );
+    return { mode: result?.mode || "clicked", rows: result?.data || [] };
+  } catch (err) {
+    console.warn(`[nexus] markButtonClicked(${messageId}, ${buttonId}) failed:`, err.message);
+    _getReportFleetError().then(fn => fn(env, {
+      bot: deriveBotName(env, options),
+      op: "markButtonClicked",
+      msg: err.message,
+      ctx: { messageId, buttonId },
+    }, options)).catch(() => {});
+    return null;
+  }
+}
+
+/**
  * Settle a HITL card's interactive components once its outcome is final.
  * Strips the action buttons + modal triggers + select menus the bot attached
  * (link buttons are preserved server-side) so a sent/rejected card no longer
