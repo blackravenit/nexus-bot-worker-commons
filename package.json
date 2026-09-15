@@ -30,6 +30,7 @@
     "./lib/appLinks": "./src/lib/appLinks.js",
     "./lib/mimeEmail": "./src/lib/mimeEmail.js",
     "./lib/graphJson": "./src/lib/graphJson.js",
+    "./lib/fleetAdmins": "./src/lib/fleetAdmins.js",
     "./persona-blocks": "./src/persona-blocks/index.js",
     "./contracts": "./contracts/index.js",
     "./testing": "./testing/index.js",

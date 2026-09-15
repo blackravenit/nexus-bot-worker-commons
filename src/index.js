@@ -1,5 +1,5 @@
 // =============================================================================
-// nexus-bot-worker-commons -- barrel re-export
+// nexus-bot-worker-commons barrel re-export
 //
 // Public API. Per-bot workers import from this entry point:
 //
@@ -50,6 +50,7 @@ export { stageExternalReply, handleExternalReplyGate, handleExternalReplyModal, 
 export { parseGraphResponse } from "./lib/graphJson.js";
 export { looksLikeIncomingPayment } from "./lib/incomingPayment.js";
 export { memoryHmacHex, buildMemoryAuthHeaders } from "./lib/memoryAuth.js";
+export { getAdminNexusUserIds, isFleetAdmin, getPrimaryAdminNexusUserId } from "./lib/fleetAdmins.js";
 export { postToNexus, uploadBotAttachment, attachImagesFromUrls, attachButtons, attachSelectMenus, disableMessageButtons, markButtonClicked, settleMessageComponents, settleHitlCard, attachModals, editNexusMessage, fetchChannelMessages, fetchThreadMessages, sendNexusHeartbeat, sendTyping, pingBotPresence } from "./lib/nexus.js";
 export { withProvenance, getProvenanceContext } from "./lib/provenanceContext.js";
 export {
