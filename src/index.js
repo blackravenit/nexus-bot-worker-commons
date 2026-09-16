@@ -41,6 +41,7 @@ export { parseCommand } from "./lib/commandParser.js";
 export { loadHistory, appendHistory } from "./lib/history.js";
 export { rememberFact, forgetFact, listFacts, buildFactsBlock } from "./lib/memory.js";
 export { resolveEntity, getEntityContext, persistTurnPair, assertFact, getEntityFacts, persistEmailExchange } from "./lib/memoryService.js";
+export { recordLesson, searchLessons, renderLessonsBlock } from "./lib/memoryLessons.js";
 export { buildContactRecall, renderContactRecallLines } from "./lib/memoryRecall.js";
 export { rankRecallCandidates, selectRankedRecall, DEFAULT_RECALL_WEIGHTS } from "./lib/memoryRanking.js";
 export { buildMemoryRecallBlock } from "./lib/memoryRecallBlock.js";

@@ -24,6 +24,7 @@
     "./lib/triggers": "./src/lib/triggers.js",
     "./lib/attachments": "./src/lib/attachments.js",
     "./lib/memoryService": "./src/lib/memoryService.js",
+    "./lib/memoryLessons": "./src/lib/memoryLessons.js",
     "./lib/format": "./src/lib/format.js",
     "./lib/embedCard": "./src/lib/embedCard.js",
     "./lib/aiDisclosure": "./src/lib/aiDisclosure.js",
