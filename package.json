@@ -40,7 +40,13 @@
     "./personas/faceGuards": "./src/personas/faceGuards.js",
     "./lib/brand": "./src/lib/brand.js",
     "./lib/eol": "./src/lib/eol.js",
-    "./lib/emailChrome": "./src/lib/emailChrome.js"
+    "./lib/emailChrome": "./src/lib/emailChrome.js",
+    "./lib/memoryRecall": "./src/lib/memoryRecall.js",
+    "./lib/memoryRanking": "./src/lib/memoryRanking.js",
+    "./lib/memoryNotes": "./src/lib/memoryNotes.js",
+    "./lib/contextBudget": "./src/lib/contextBudget.js",
+    "./lib/historyFold": "./src/lib/historyFold.js",
+    "./lib/emailQuote": "./src/lib/emailQuote.js"
   },
   "files": [
     "src/",

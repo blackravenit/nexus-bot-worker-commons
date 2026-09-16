@@ -33,8 +33,12 @@
 import { verifyNexusSignature } from "../lib/callbackSign.js";
 import { parseCommand } from "../lib/commandParser.js";
 import { loadHistory, appendHistory } from "../lib/history.js";
-import { rememberFact, forgetFact, listFacts, buildFactsBlock } from "../lib/memory.js";
+import { buildFactsBlock } from "../lib/memory.js";
 import { persistTurnPair, resolveEntity, getEntityContext, assertFact } from "../lib/memoryService.js";
+import { buildMemoryRecallBlock } from "../lib/memoryRecallBlock.js";
+import { resolveContextBudget, applyHistoryBudget, fitNewestLines } from "../lib/contextBudget.js";
+import { buildHistoryFoldBlock, clearFolds } from "../lib/historyFold.js";
+import { buildMemoryCommandHandlers } from "./memoryCommands.js";
 import { callAnthropicWithTools, callAnthropic } from "../lib/anthropic.js";
 import { postToNexus, sendTyping, fetchChannelMessages, fetchThreadMessages } from "../lib/nexus.js";
 import { postApprovalCard } from "../lib/hitl.js";
@@ -248,89 +252,6 @@ async function fetchGifBlocks(env, urls) {
   return { blocks, urls: used };
 }
 
-/**
- * Build a compact "what you remember about this person" block from a
- * memory-worker /context payload. Surfaces durable facts, recent cross-surface
- * turns (chat + Nexus voice + Twilio phone all flow into the same entity), and
- * recent session summaries -- EXCLUDING the current chat session, whose turns
- * the per-user chat_history already carries. Bounded and best-effort; returns
- * "" when there is nothing worth injecting.
- *
- * @param {object|null} ctx - memory-worker /context response
- * @param {string} currentSessionId - historyKey of the live chat session
- * @returns {string}
- */
-function formatRecallAge(createdAt, now) {
-  if (typeof createdAt !== "number" || !createdAt) return "";
-  const ms = now - createdAt;
-  if (ms < 60 * 1000) return "just now";
-  const mins = Math.floor(ms / (60 * 1000));
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 14) return `${days}d ago`;
-  if (days < 60) return `${Math.floor(days / 7)}w ago`;
-  return `${Math.floor(days / 30)}mo ago`;
-}
-
-function buildMemoryRecallBlock(ctx, currentSessionId) {
-  if (!ctx) return "";
-  const lines = [];
-  const now = Date.now();
-
-  const facts = Array.isArray(ctx.facts) ? ctx.facts : [];
-  const factLines = facts
-    .filter((f) => f && f.predicate && f.object)
-    .slice(0, 15)
-    .map((f) => {
-      const age = formatRecallAge(f.created_at, now);
-      return `- ${String(f.predicate).replace(/_/g, " ")}: ${f.object}${age ? ` [${age}]` : ""}`;
-    });
-  if (factLines.length) {
-    lines.push("Known facts:");
-    lines.push(...factLines);
-  }
-
-  // Cross-surface turns: keep ones NOT from the current chat session (those are
-  // already in the immediate history). Voice/phone turns carry their own
-  // session ids, so this is where past calls surface.
-  const turns = (Array.isArray(ctx.recent_turns) ? ctx.recent_turns : [])
-    .filter((t) => t && t.content && t.session_id !== currentSessionId);
-  if (turns.length) {
-    if (lines.length) lines.push("");
-    lines.push("Earlier across chat/voice/phone (oldest to newest):");
-    for (const t of turns.slice(-12)) {
-      const who = t.role === "assistant" ? "you" : "them";
-      const where = t.channel ? ` (${t.channel})` : "";
-      const age = formatRecallAge(t.created_at, now);
-      lines.push(`- ${who}${where}${age ? ` [${age}]` : ""}: ${String(t.content).replace(/\s+/g, " ").slice(0, 200)}`);
-    }
-  }
-
-  const summaries = (Array.isArray(ctx.recent_sessions) ? ctx.recent_sessions : [])
-    .filter((s) => s && s.summary);
-  if (summaries.length) {
-    if (lines.length) lines.push("");
-    lines.push("Recent conversation summaries:");
-    for (const s of summaries.slice(0, 3)) {
-      const where = s.channel ? `${s.channel}: ` : "";
-      const age = formatRecallAge(s.last_active, now);
-      lines.push(`-${age ? ` [${age}]` : ""} ${where}${String(s.summary).replace(/\s+/g, " ").slice(0, 300)}`);
-    }
-  }
-
-  if (!lines.length) return "";
-  return (
-    "\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (your shared memory across chat, voice calls, and phone calls -- " +
-    "use it naturally for continuity; do NOT recite it verbatim or say you looked it up). " +
-    "Bracketed ages like [3d ago] mark how OLD each item is -- this is PAST context, not current events. " +
-    "Do NOT raise an old fact or past conversation as if it is happening now or announce it as news; " +
-    "only bring it up if the person references it first or it directly answers what they just asked:\n" +
-    lines.join("\n")
-  );
-}
-
 // Foundation command verbs built per-request (need env + user context)
 const FOUNDATION_VERBS = new Set(["remember", "forget", "facts", "clear", "status", "fleet"]);
 
@@ -394,44 +315,7 @@ export function buildFoundationHandlers(env, userId, historyKey, channel_slug, c
   const displayName = config.persona?.displayName || botName;
 
   return {
-    remember: async (cmdCtx) => {
-      const fact = cmdCtx.args.trim();
-      if (!fact) {
-        await cmdCtx.reply("Usage: `!remember <fact>`");
-        return;
-      }
-      const id = await rememberFact(env, userId, fact, { dbBinding: config.dbBinding });
-      if (id === null) {
-        await cmdCtx.reply("Could not save that fact (DB unavailable).");
-      } else {
-        await cmdCtx.reply(`Remembered: ${fact}`);
-      }
-    },
-
-    forget: async (cmdCtx) => {
-      const q = cmdCtx.args.trim();
-      if (!q) {
-        await cmdCtx.reply("Usage: `!forget <text>`");
-        return;
-      }
-      const count = await forgetFact(env, userId, q, { dbBinding: config.dbBinding });
-      if (count === 0) {
-        await cmdCtx.reply(`No memory matched "${q}".`);
-      } else {
-        await cmdCtx.reply(`Forgot ${count} item(s) matching "${q}".`);
-      }
-    },
-
-    facts: async (cmdCtx) => {
-      const facts = await listFacts(env, userId, { dbBinding: config.dbBinding });
-      if (facts.length === 0) {
-        await cmdCtx.reply("No facts remembered yet.");
-        return;
-      }
-      const lines = [`**Facts (${facts.length})**`];
-      facts.forEach((f, i) => lines.push(`${i + 1}. ${f.text}`));
-      await cmdCtx.reply(lines.join("\n"));
-    },
+    ...buildMemoryCommandHandlers(env, userId, config),
 
     clear: async (cmdCtx) => {
       const dbKey = config.dbBinding || "DB";
@@ -442,6 +326,8 @@ export function buildFoundationHandlers(env, userId, historyKey, channel_slug, c
             .prepare("DELETE FROM chat_history WHERE history_key = ?")
             .bind(historyKey)
             .run();
+          // A rolling summary of the cleared history must not outlive it.
+          await clearFolds(db, historyKey);
         } catch (err) {
           console.error("[handleChatMessage] clear history failed:", err.message);
         }
@@ -658,7 +544,17 @@ export async function runLlmPipeline({
   const typingHeartbeat = fleetView ? null : setInterval(() => { typing("start"); }, TYPING_HEARTBEAT_MS);
 
   try {
-    history = await loadHistory(env, historyKey, { dbBinding: config.dbBinding });
+    // Token budget (opt-in, config.contextBudget.enabled): load a generous
+    // window and keep the newest rows that fit; the rest may be folded into a
+    // rolling summary further down. Off = the old fixed 30 row window.
+    const budget = resolveContextBudget(config);
+    let droppedHistory = [];
+    if (budget.enabled) {
+      const loaded = await loadHistory(env, historyKey, { dbBinding: config.dbBinding, maxTurns: budget.historyWindow, withMeta: true });
+      ({ history, dropped: droppedHistory } = applyHistoryBudget(loaded, budget.history));
+    } else {
+      history = await loadHistory(env, historyKey, { dbBinding: config.dbBinding });
+    }
     mark("history");
 
     // Auto-fetch recent channel messages so the bot knows what the broader
@@ -682,7 +578,8 @@ export async function runLlmPipeline({
     // so the fetch buys nothing and costs a Nexus round trip plus a pile of
     // tokens in the prompt, both of which are silence on a spoken turn.
     const ccEnabled = !fleetView && config.channelContext?.enabled !== false;
-    const ccLimit = config.channelContext?.limit ?? 15;
+    const ccFixedLimit = config.channelContext?.limit ?? 15;
+    const ccLimit = budget.enabled ? Math.max(ccFixedLimit, budget.channelWindow) : ccFixedLimit;
     // The bot's own user id, so its own messages in the channel/thread feed are
     // labeled "(you)" instead of looking like a stranger's. Without this, a bot
     // @mentioned about a scheduled post it made (a digest, a watercooler line)
@@ -765,11 +662,12 @@ export async function runLlmPipeline({
                 : "";
               return `[${ts}] ${who}: ${body}${attSuffix}`;
             });
-          if (lines.length > 0) {
+          const ccLines = budget.enabled ? fitNewestLines(lines, budget.channel) : lines;
+          if (ccLines.length > 0) {
             channelContextBlock =
               "\n\nRECENT CHANNEL MESSAGES (context from #" + channel_slug +
               " so you understand the current conversation):\n" +
-              lines.join("\n") +
+              ccLines.join("\n") +
               "\n\nRespond to the latest message directed at you, but FIRST read the messages above to " +
               "understand what it is about. When the message refers to something implicitly -- 'it', " +
               "'this', 'that one', 'send it', 'do it', 'go ahead', 'looks good', 'approve it' -- the " +
@@ -811,7 +709,8 @@ export async function runLlmPipeline({
     // nobody is looking at during a spoken turn.
     const hitlCtxEnabled = !fleetView && config.hitlContext?.enabled !== false;
     const hitlCtxSlug = config.approvalSlug;
-    const hitlCtxLimit = config.hitlContext?.limit ?? 8;
+    const hitlFixedLimit = config.hitlContext?.limit ?? 8;
+    const hitlCtxLimit = budget.enabled ? Math.max(hitlFixedLimit, budget.hitlWindow) : hitlFixedLimit;
     if (hitlCtxEnabled && hitlCtxSlug && hitlCtxSlug !== channel_slug) {
       try {
         const hitlMsgs = await fetchChannelMessages(env, hitlCtxSlug, {
@@ -831,12 +730,13 @@ export async function runLlmPipeline({
               return `[${ts}] ${who}: ${body}`;
             })
             .filter((l) => l.trim());
-          if (lines.length > 0) {
+          const hitlLines = budget.enabled ? fitNewestLines(lines, budget.hitl) : lines;
+          if (hitlLines.length > 0) {
             hitlContextBlock =
               "\n\nYOUR APPROVAL QUEUE (#" + hitlCtxSlug + ") -- recent cards you staged for " +
               "the user to Approve or Deny, newest last. These are actions YOU already took " +
               "(drafted an email, queued a schedule change, etc.) that are waiting on a decision:\n" +
-              lines.join("\n") +
+              hitlLines.join("\n") +
               "\n\nIf the user refers to 'the email', 'that draft', 'the card', 'your HITL', 'the " +
               "approval', or asks to cancel / approve / change / resend a pending action, it almost " +
               "certainly refers to one of these. Do NOT claim you cannot find it or that it does not " +
@@ -907,7 +807,12 @@ export async function runLlmPipeline({
     // Kicked off here, awaited below with the memory recall. These are a D1
     // read and a memory-worker round trip with nothing to say to each other,
     // and running them one after the other spent both latencies in series.
-    const factsBlockPromise = buildFactsBlock(env, user_id, { dbBinding: config.dbBinding });
+    // Legacy per-bot facts are retired once they have been copied into the
+    // shared memory (migrateLegacyFacts) and the bot sets legacyFactsMigrated.
+    const legacyFactsRetired = Boolean(env.MEMORY) && config.legacyFactsMigrated === true;
+    const factsBlockPromise = legacyFactsRetired
+      ? Promise.resolve("")
+      : buildFactsBlock(env, user_id, { dbBinding: config.dbBinding });
 
     // Cross-surface memory recall. Everything this bot hears -- chat, Nexus
     // voice, and Twilio phone -- is persisted to the memory-worker keyed by the
@@ -921,8 +826,15 @@ export async function runLlmPipeline({
     const recall = async () => {
       memEntityId = await resolveEntity(env, memBotId, { userId: user_id, email: user_email, displayName: display_name }, MEM_STAFF);
       if (!memEntityId) return "";
-      const memCtx = await getEntityContext(env, memBotId, memEntityId, userText, MEM_STAFF);
-      return buildMemoryRecallBlock(memCtx, historyKey);
+      // Ask for a wider pool than the 15 fact / 12 turn caps so ranking has
+      // something to choose from.
+      const memCtx = await getEntityContext(env, memBotId, memEntityId, userText, { ...MEM_STAFF, maxFacts: 40, maxTurns: 30 });
+      return buildMemoryRecallBlock(memCtx, historyKey, {
+        query: userText,
+        botId: memBotId,
+        weights: config.memoryRecall?.weights,
+        maxTokens: budget.enabled ? budget.recall : 0,
+      });
     };
 
     if (env.MEMORY && config.botName && config.memoryRecall?.enabled !== false) {
@@ -947,6 +859,16 @@ export async function runLlmPipeline({
 
     const factsBlock = await factsBlockPromise;
     mark("recall_and_facts");
+
+    // Rolling summary of history rows the budget dropped. Runs after recall so
+    // the memory-worker mirror can attach to the resolved entity. A spoken
+    // FleetView turn never waits on a fresh summarization: cache only.
+    const historyFoldBlock = budget.enabled
+      ? await buildHistoryFoldBlock(env, {
+        historyKey, dropped: droppedHistory, foldMinRows: budget.foldMinRows, dbBinding: config.dbBinding,
+        allowRefold: !fleetView, botId: config.botName ? memBotId : null, entityId: memEntityId, channel: channel_slug,
+      })
+      : "";
 
     const NEXUS_CONTEXT =
       "\n\nYou are on Nexus, Black Raven IT's internal communications platform." +
@@ -1093,7 +1015,7 @@ export async function runLlmPipeline({
     const stableGuidance = NEXUS_MENTION_RULE + NEXUS_ACTION_INTEGRITY + NEXUS_INFRA_GROUNDING
       + NEXUS_STYLE_CLOSE + SESSION_CONTEXT_NOTE;
     const sessionContext = (factsBlock || "") + NEXUS_CONTEXT + NEXUS_EMAIL_SAFETY + NEXUS_TODAY
-      + FLEETVIEW_SURFACE + RELAY_MODE + memoryRecallBlock + threadContextBlock
+      + FLEETVIEW_SURFACE + RELAY_MODE + historyFoldBlock + memoryRecallBlock + threadContextBlock
       + channelContextBlock + hitlContextBlock;
     const systemPromptWithFacts = [
       { text: systemPrompt + stableGuidance, cache: true },

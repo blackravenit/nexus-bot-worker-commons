@@ -34,6 +34,8 @@
 import { postToNexus, attachButtons, attachModals, editNexusMessage, settleHitlCard } from "./nexus.js";
 import { buildReport } from "./embedCard.js";
 import { routeApprovalChannel } from "./channelRouter.js";
+import { flattenEmailHtml } from "./emailQuote.js";
+import { persistEmailExchange } from "./memoryService.js";
 
 const TTL_SECONDS = 7 * 24 * 60 * 60;
 const DEFAULT_KIND = "external-reply";
@@ -51,18 +53,7 @@ function clamp(str, max) {
  * @returns {string} Plain text.
  */
 export function htmlToText(html, limit = 4000) {
-  const text = String(html || "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|tr|h[1-6])>/gi, "\n\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  return text.length > limit ? `${text.slice(0, limit)}...` : text;
+  return flattenEmailHtml(html, limit);
 }
 
 /**
@@ -380,6 +371,14 @@ async function sendAndSettle(env, { messageId, key, pending, actor, opts, force 
     return { handled: true, action: "failed" };
   }
 
+  // Opt-in episodic memory of what was ACTUALLY sent (after any reviewer edit).
+  // The inbound side is written by the consumer's poller at stage time.
+  if (opts.memoryBotId && pending.from) {
+    await persistEmailExchange(env, opts.memoryBotId, {
+      fromEmail: pending.from, subject: pending.subject, replyText: pending.draftHtml, audience: "external",
+    });
+  }
+
   const ccLine = Array.isArray(pending.cc) && pending.cc.length ? ` CC: ${pending.cc.join(", ")}` : "";
   await settleHitlCard(env, messageId, {
     botName: pending.botName || "",
@@ -398,6 +397,7 @@ async function sendAndSettle(env, { messageId, key, pending, actor, opts, force 
  * @param {object} payload   normalized button-click payload (button_id, message_id, display_name)
  * @param {object} opts
  * @param {function} opts.sendReply    (env, pending) => Promise, performs the Graph reply
+ * @param {string} [opts.memoryBotId]  when set, the sent reply is written to shared memory (channel email)
  * @param {string} [opts.buttonPrefix="extmail"]
  * @param {string} [opts.kvPrefix="extreply:"]
  * @param {string} [opts.workerBaseUrl]

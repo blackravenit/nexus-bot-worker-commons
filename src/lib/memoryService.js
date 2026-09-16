@@ -13,6 +13,7 @@
 // =============================================================================
 
 import { buildMemoryAuthHeaders } from './memoryAuth.js';
+import { stripQuotedReply, flattenEmailHtml } from './emailQuote.js';
 
 const BOT_HEADER = 'X-Memory-Bot';
 
@@ -77,20 +78,18 @@ async function memoryGet(env, botId, path, opts) {
  */
 export async function persistTurnPair(env, botId, { sessionId, entityId, userText, assistantText, channel }, opts) {
   if (!env.MEMORY) return;
-  await memoryFetch(env, botId, '/turns', {
-    session_id: sessionId,
-    entity_id: entityId || null,
-    role: 'user',
-    content: userText,
-    channel,
-  }, opts);
-  await memoryFetch(env, botId, '/turns', {
-    session_id: sessionId,
-    entity_id: entityId || null,
-    role: 'assistant',
-    content: assistantText,
-    channel,
-  }, opts);
+  // An empty side would be a 400 from the worker; skip it instead (an inbound
+  // email the bot chose not to answer still deserves its user turn).
+  const turns = [['user', userText], ['assistant', assistantText]].filter(([, text]) => text);
+  for (const [role, content] of turns) {
+    await memoryFetch(env, botId, '/turns', {
+      session_id: sessionId,
+      entity_id: entityId || null,
+      role,
+      content,
+      channel,
+    }, opts);
+  }
 }
 
 /**
@@ -133,6 +132,7 @@ export async function resolveEntity(env, botId, { userId, email, phone, displayN
  * @param {string} botId
  * @param {string} entityId
  * @param {string} [query] - Optional query for semantic search
+ * @param {object} [opts] - audience/scope, plus maxFacts/maxTurns candidate pool sizes
  * @returns {Promise<object|null>}
  */
 export async function getEntityContext(env, botId, entityId, query, opts) {
@@ -140,6 +140,8 @@ export async function getEntityContext(env, botId, entityId, query, opts) {
   return await memoryFetch(env, botId, '/context', {
     entity_id: entityId,
     query: query || undefined,
+    max_facts: Number(opts?.maxFacts) > 0 ? Number(opts.maxFacts) : undefined,
+    max_turns: Number(opts?.maxTurns) > 0 ? Number(opts.maxTurns) : undefined,
   }, opts);
 }
 
@@ -190,9 +192,68 @@ export async function assertFact(env, botId, { subjectId, predicate, object, con
 
 /**
  * Get active facts for an entity.
+ * @param {object} env
+ * @param {string} botId
+ * @param {string} entityId
+ * @param {object} [opts] - opts.scope 'all' for the staff view (internal notes)
+ * @returns {Promise<Array<object>>}
  */
-export async function getEntityFacts(env, botId, entityId) {
+export async function getEntityFacts(env, botId, entityId, opts) {
   if (!env.MEMORY) return [];
-  const result = await memoryGet(env, botId, `/entities/${entityId}/facts`);
+  const result = await memoryGet(env, botId, `/entities/${entityId}/facts`, opts);
   return result?.facts || [];
+}
+
+const EMAIL_BODY_MAX_CHARS = 4000;
+// Flatten generously before the quote strip so the cut sees the whole chain.
+const HTML_FLATTEN_MAX_CHARS = 100000;
+const HTML_TAG_RE = /<(p|div|br|span|table|html|body)[\s/>]/i;
+
+/**
+ * Persist an inbound email and the bot's reply as an episodic turn pair on
+ * the sender's shared memory entity (channel 'email'), so chat and voice
+ * recall can see what was said by mail. Quoted history is stripped from both
+ * bodies and each is capped at 4000 chars. Best-effort: never throws.
+ *
+ * @param {object} env - Worker env with MEMORY service binding
+ * @param {string} botId
+ * @param {object} params
+ * @param {string} params.fromEmail - sender address (entity key)
+ * @param {string} [params.fromName]
+ * @param {string} [params.subject]
+ * @param {string} [params.inboundText] - flattened inbound body
+ * @param {string} [params.replyText] - reply body actually sent or staged ('' if none)
+ * @param {'internal'|'external'} [params.audience] - omitted = worker default (internal)
+ * @returns {Promise<string|null>} entity_id, or null when nothing was written
+ */
+export async function persistEmailExchange(env, botId, { fromEmail, fromName, subject, inboundText, replyText, audience } = {}) {
+  if (!env?.MEMORY || !fromEmail) return null;
+  const email = String(fromEmail).trim().toLowerCase();
+  const inbound = clipEmailBody(inboundText);
+  const reply = clipEmailBody(replyText);
+  if (!inbound && !reply) return null;
+  const opts = audience ? { audience } : undefined;
+  try {
+    const entityId = await resolveEntity(env, botId, { email, displayName: fromName || email }, opts);
+    const subjectLine = subject ? `Subject: ${String(subject).trim()}\n\n` : '';
+    await persistTurnPair(env, botId, {
+      sessionId: `email:${email}`,
+      entityId,
+      userText: inbound ? subjectLine + inbound : '',
+      assistantText: reply,
+      channel: 'email',
+    }, opts);
+    return entityId;
+  } catch (err) {
+    console.error(`[memoryService] persistEmailExchange bot=${botId} from=${email}: ${err?.message}`);
+    return null;
+  }
+}
+
+// Flatten HTML (drafts are usually body_html), drop the quoted chain, cap.
+function clipEmailBody(text) {
+  if (!text) return '';
+  const raw = String(text);
+  const flat = HTML_TAG_RE.test(raw) ? flattenEmailHtml(raw, HTML_FLATTEN_MAX_CHARS) : raw;
+  return stripQuotedReply(flat).slice(0, EMAIL_BODY_MAX_CHARS);
 }

@@ -48,7 +48,9 @@ const MAX_PRUNE_KEEP = 150;
  * @param {object} [options]
  * @param {string} [options.dbBinding="DB"] - D1 binding name on env
  * @param {number} [options.maxTurns=30] - Max turns to return
- * @returns {Promise<Array<{role: string, content: string}>>}
+ * @param {boolean} [options.withMeta=false] - also return row id and created_at
+ *   (callers must strip them before sending rows to the model)
+ * @returns {Promise<Array<{role: string, content: string, id?: number, created_at?: number}>>}
  */
 export async function loadHistory(env, historyKey, options = {}) {
   const dbKey = options.dbBinding || DEFAULT_DB_BINDING;
@@ -68,13 +70,16 @@ export async function loadHistory(env, historyKey, options = {}) {
     // timeout errors and LlmRoom DO resets on high-volume bots.
     const result = await db
       .prepare(
-        "SELECT role, content FROM chat_history WHERE history_key = ? ORDER BY id DESC LIMIT ?",
+        "SELECT id, role, content, created_at FROM chat_history WHERE history_key = ? ORDER BY id DESC LIMIT ?",
       )
       .bind(historyKey, maxTurns)
       .all();
 
     const rows = result?.results || [];
     // Rows come back newest-first; reverse for chronological order.
+    if (options.withMeta) {
+      return rows.reverse().map(({ id, role, content, created_at }) => ({ id, role, content, created_at }));
+    }
     return rows.reverse().map(({ role, content }) => ({ role, content }));
   } catch (err) {
     console.error("[history] loadHistory failed:", err.message);
