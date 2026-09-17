@@ -158,6 +158,7 @@ export async function buildHistoryFoldBlock(env, params) {
       if (summary) {
         await saveFold(db, historyKey, pending[pending.length - 1].id, summary);
         await mirrorFoldToMemory(env, { ...params, summary });
+        console.info(`[historyFold] folded key=${historyKey} rows=${pending.length} chars=${summary.length}`);
       }
     }
     return summary ? `\n\nEarlier in this conversation (summary): ${summary}` : "";
