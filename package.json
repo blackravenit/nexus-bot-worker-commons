@@ -47,7 +47,10 @@
     "./lib/memoryNotes": "./src/lib/memoryNotes.js",
     "./lib/contextBudget": "./src/lib/contextBudget.js",
     "./lib/historyFold": "./src/lib/historyFold.js",
-    "./lib/emailQuote": "./src/lib/emailQuote.js"
+    "./lib/emailQuote": "./src/lib/emailQuote.js",
+    "./lib/intel/typosquat": "./src/lib/intel/typosquat.js",
+    "./lib/intel/maskVariants": "./src/lib/intel/maskVariants.js",
+    "./lib/intel/rdap": "./src/lib/intel/rdap.js"
   },
   "files": [
     "src/",
