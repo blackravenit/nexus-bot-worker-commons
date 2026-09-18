@@ -11,6 +11,7 @@
 // =============================================================================
 
 const RDAP_BASE = "https://rdap.org/domain/";
+const DEFAULT_USER_AGENT = "robert-worker/mask-sweep";
 
 /**
  * Pulls the vCard fn or org value from an RDAP entity.
@@ -38,12 +39,13 @@ function entityByRole(body, role) {
 /**
  * Look up a domain's registration data.
  * @param {string} domain - Bare domain, punycode form for IDNs
+ * @param {{userAgent?: string}} [options] - Caller identity; defaults to the Robert sweep UA
  * @returns {Promise<{ok: boolean, registered: boolean|null, registrar?: string|null, registrantOrg?: string|null, createdAt?: string|null, error?: string}>}
  */
-export async function rdapDomain(domain) {
+export async function rdapDomain(domain, { userAgent = DEFAULT_USER_AGENT } = {}) {
   try {
     const res = await fetch(RDAP_BASE + encodeURIComponent(domain), {
-      headers: { Accept: "application/rdap+json", "User-Agent": "robert-worker/mask-sweep" },
+      headers: { Accept: "application/rdap+json", "User-Agent": userAgent },
       redirect: "follow",
       signal: AbortSignal.timeout(15000),
     });
