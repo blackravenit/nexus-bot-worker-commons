@@ -201,10 +201,17 @@ export function misspellingVariants(sld, tld) {
 /**
  * Generate the FULL look-alike candidate set for the Mask sweep: every class,
  * no cap, deduped, original excluded, with per-class counts for logging.
+ *
+ * exclude drops named classes before generation. The Mask sweep drops
+ * "addition": it is 58 percent of the candidate set across our watch list and
+ * the weakest signal in it (every letter appended at every position), and the
+ * sweep only has DNS_BUDGET_PER_RUN subrequests to spend.
  * @param {string} domain - "example.com"
+ * @param {{exclude?: Array<string>}} [options] - Class names to skip
  * @returns {{variants: Array<string>, counts: Record<string, number>}}
  */
-export function generateFullVariants(domain) {
+export function generateFullVariants(domain, options = {}) {
+  const exclude = new Set(options.exclude || []);
   const original = (domain || "").toLowerCase().trim();
   if (!original.includes(".")) return { variants: [], counts: {} };
   const lastDot = original.lastIndexOf(".");
@@ -234,6 +241,7 @@ export function generateFullVariants(domain) {
   const variants = [];
   const counts = {};
   for (const [name, list] of Object.entries(classes)) {
+    if (exclude.has(name)) continue;
     counts[name] = 0;
     for (const v of list) {
       if (seen.has(v)) continue;

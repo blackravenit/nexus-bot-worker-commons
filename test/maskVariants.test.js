@@ -63,6 +63,17 @@ test("generateFullVariants keeps the consonant misspellings no other class emits
   assert.ok(variants.includes("graficdesign.com"));
 });
 
+test("generateFullVariants exclude drops a class entirely, cutting the candidate set", () => {
+  const full = generateFullVariants("blackravenit.com");
+  const trimmed = generateFullVariants("blackravenit.com", { exclude: ["addition"] });
+  assert.ok(full.counts.addition > 0);
+  assert.equal(trimmed.counts.addition, undefined);
+  assert.ok(trimmed.variants.length < full.variants.length);
+  // Excluding one class must not change what the others contribute.
+  assert.equal(trimmed.counts.bitsquat, full.counts.bitsquat);
+  assert.deepEqual(generateFullVariants("blackravenit.com", { exclude: [] }).variants, full.variants);
+});
+
 test("a new class counts zero when an earlier class already emitted its output", () => {
   // The only misspelling hit on blackravenit is ck -> k, and omission already
   // emits blakravenit.com. Dedupe absorbing the overlap is correct, not a bug.
