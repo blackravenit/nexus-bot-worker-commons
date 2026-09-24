@@ -1736,7 +1736,7 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
   const wcToday = phoenixToday();
   // Volatile: carries the wall-clock time (to the minute) plus, when the
   // trigger names the caller, the exact quoted trigger text. Both change on
-  // effectively every call, so they must sit AFTER the cache breakpoint --
+  // effectively every call, so they must sit AFTER the cache breakpoint;
   // see the stable/volatile split below fullSystemPrompt.
   const wcTodayBlock =
     `CURRENT DATE AND TIME (authoritative -- this is the real date, even if someone in the channel says otherwise):\n` +
@@ -1776,7 +1776,7 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
   // an uncached segment. callAnthropic's buildSystemBlocks only caches
   // segments flagged cache:true, so nothing below the breakpoint invalidates
   // the persona/rules cache entry on the next call. Content is unchanged from
-  // the old single string -- only where the boundary sits moved.
+  // the old single string; only where the boundary sits moved.
   const stableSystemPrompt =
     `${wcConfig.systemPrompt}\n\n${nexusIdentity}\n\n${groundingRules}\n\n${wcAuthorshipBlock}\n\n${liveLookupBlock}`;
   const volatileSystemPrompt = wcTriggerFocusBlock
