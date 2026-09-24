@@ -44,6 +44,7 @@ import { postToNexus, sendTyping, fetchChannelMessages, fetchThreadMessages } fr
 import { postApprovalCard } from "../lib/hitl.js";
 import { withProvenance } from "../lib/provenanceContext.js";
 import { bangReport } from "../lib/embedCard.js";
+import { reportFleetError } from "../lib/fleetError.js";
 import { buildAttachmentContentBlocks, buildBlock } from "../lib/attachments.js";
 import { transcodeToJpeg } from "../lib/imageTranscode.js";
 import { shouldChimeIn } from "../lib/watercooler.js";
@@ -56,6 +57,30 @@ import { isFleetViewSource, deliverFleetViewReply } from "../lib/fleetviewDelive
 
 // Detect GIF-only messages so bots receive "[GIF image: <url>]" instead of
 // a bare CDN URL they cannot interpret.
+// A model call on a media turn used to be blamed on the media unconditionally,
+// so ANY unrelated failure (a cache-breakpoint 400, a gateway flake, an auth
+// error) made the bot tell the user their image was unreadable and to re-post
+// it, while the real error was only console.warn-ed and never raised. Brian
+// caught this 2026-09-24 when Jacob told a prospect their referral screenshot
+// errored on read. Only an error that actually names an image or document
+// block earns the text-only retry; everything else rethrows so the turn
+// reports a real failure instead of libelling the attachment.
+const MEDIA_REJECTION_RE = /\b(image|images|document|documents|media|attachment)\b/i;
+
+/**
+ * True when the model call failed BECAUSE of an attached image or document,
+ * rather than for an unrelated reason on a turn that happened to carry one.
+ * @param {Error} err - the error thrown by the model call
+ * @returns {boolean}
+ */
+export function isMediaRejection(err) {
+  const msg = String(err && err.message ? err.message : err || "");
+  // Anthropic reports a malformed or oversized block as a 4xx. A 5xx, a
+  // timeout or a gateway failure is never the attachment's fault, whatever
+  // words the body happens to contain.
+  if (!/API error 4\d\d/.test(msg)) return false;
+  return MEDIA_REJECTION_RE.test(msg);
+}
 const GIF_URL_RE = /^https:\/\/(?:media\d*|i)\.giphy\.com\/|^https:\/\/media\.tenor\.com\//i;
 
 // Re-arm the "<bot> is typing..." indicator on a fixed clock for the whole
@@ -1331,13 +1356,22 @@ export async function runLlmPipeline({
       );
       mark("model");
     } catch (modelErr) {
-      // If the turn carried image/document blocks, the likeliest cause is
-      // Anthropic rejecting an attachment (oversized image, animated GIF,
-      // unsupported subtype). Retry once text-only so the bot still answers
-      // instead of dropping the whole turn into the generic error path. A
-      // non-media failure rethrows to the outer catch unchanged.
-      if (!mediaRetryText) throw modelErr;
-      console.warn(`[handleChatMessage] model call failed with attachment(s); retrying text-only: ${modelErr.message}`);
+      // The real error is reported either way. It used to live only in a
+      // console.warn, so a fleet-wide model failure looked to everyone like a
+      // run of unreadable images and nothing ever paged.
+      console.error(`[handleChatMessage] model call failed on a media turn: ${modelErr.message}`);
+      reportFleetError(env, {
+        bot: config.botName,
+        op: "handleChatMessage/media-turn",
+        msg: modelErr.message,
+        ctx: { channel_slug, media_blocks: mediaBlocks.length, media_rejection: isMediaRejection(modelErr) },
+      }, nexusOptions).catch(() => { /* reporting must never mask the original error */ });
+
+      // Only a genuine media rejection earns the text-only retry. Any other
+      // failure rethrows, because telling the user their image was unreadable
+      // when the real fault was a 500 or a bad cache breakpoint sends them off
+      // re-posting a picture that was never the problem, and hides the outage.
+      if (!mediaRetryText || !isMediaRejection(modelErr)) throw modelErr;
       history[history.length - 1] = {
         role: "user",
         content:
