@@ -1727,9 +1727,6 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
     nameMention
       ? "- Someone addressed you by name. Respond to them warmly and directly, like a coworker you like."
       : "- You are chiming into an ongoing conversation. Keep it natural and brief.",
-    ...(nameMention && triggerDisplayName && triggerBody
-      ? [`- ${triggerDisplayName} said: '${triggerBody.slice(0, 300)}' -- reply to exactly that. Match their energy and topic. Ignore everything else in the channel.`]
-      : []),
   ].join("\n");
 
   const nexusIdentity =
@@ -1737,10 +1734,18 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
     " Everyone here is a Black Raven IT employee or subcontractor." +
     " Never question anyone's identity.";
   const wcToday = phoenixToday();
+  // Volatile: carries the wall-clock time (to the minute) plus, when the
+  // trigger names the caller, the exact quoted trigger text. Both change on
+  // effectively every call, so they must sit AFTER the cache breakpoint --
+  // see the stable/volatile split below fullSystemPrompt.
   const wcTodayBlock =
     `CURRENT DATE AND TIME (authoritative -- this is the real date, even if someone in the channel says otherwise):\n` +
     `- It is ${wcToday.full}, ${wcToday.time}. ISO ${wcToday.iso}. Arizona local (UTC-7, no DST).\n` +
     `- If anyone here (human or bot) names a different day, month, or year, they are wrong or joking -- do NOT adopt it, mirror it, or play along with the wrong date. Never reference a month or date that is not the one above, and do not fall back on any internal sense of "today".`;
+  const wcTriggerFocusBlock =
+    nameMention && triggerDisplayName && triggerBody
+      ? `- ${triggerDisplayName} said: '${triggerBody.slice(0, 300)}' -- reply to exactly that. Match their energy and topic. Ignore everything else in the channel.`
+      : "";
   // Authorship grounding. The casual posts in this channel that carry your name
   // are written by a scheduled job (a separate cron, see jobs/watercooler.js),
   // so when you are later @mentioned about one you have no chat memory of having
@@ -1766,7 +1771,21 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
     "- Only name real-world things (shows, podcasts, articles, books, events) that come from your search results or from links already visible in this conversation. Never share a URL from memory.\n" +
     "- If a search genuinely comes up empty, say what you tried and offer the closest real thing you did find.\n" +
     "- Keep the reply casual: a self-deprecating beat about the earlier flub is fine, then the real find and its link. Two short sentences plus the URL beats a paragraph.";
-  const fullSystemPrompt = `${wcConfig.systemPrompt}\n\n${nexusIdentity}\n\n${wcTodayBlock}\n\n${groundingRules}\n\n${wcAuthorshipBlock}\n\n${liveLookupBlock}`;
+  // Stable prefix (persona + static rules) gets the cache breakpoint; the
+  // volatile tail (current time, the quoted trigger text) rides AFTER it as
+  // an uncached segment. callAnthropic's buildSystemBlocks only caches
+  // segments flagged cache:true, so nothing below the breakpoint invalidates
+  // the persona/rules cache entry on the next call. Content is unchanged from
+  // the old single string -- only where the boundary sits moved.
+  const stableSystemPrompt =
+    `${wcConfig.systemPrompt}\n\n${nexusIdentity}\n\n${groundingRules}\n\n${wcAuthorshipBlock}\n\n${liveLookupBlock}`;
+  const volatileSystemPrompt = wcTriggerFocusBlock
+    ? `${wcTodayBlock}\n\n${wcTriggerFocusBlock}`
+    : wcTodayBlock;
+  const fullSystemPrompt = [
+    { text: stableSystemPrompt, cache: true },
+    { text: volatileSystemPrompt },
+  ];
 
   try {
     await sendTyping(env, channel_slug, "start", nexusOptions);
