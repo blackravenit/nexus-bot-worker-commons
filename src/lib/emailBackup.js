@@ -74,13 +74,14 @@ function _isDuplicate(key) {
  * @param {object} env
  * @param {object} args
  * @param {string} args.bot - bot id key in BOT_HOME_CHANNELS (e.g. "jacob")
+ * @param {string} [args.channelSlug] - post here instead of the bot home channel
  * @param {string} [args.to] - intended recipient address, for the card
  * @param {string} [args.subject] - intended subject, for the card
  * @param {string} [args.reason] - error message / why the send failed
  * @param {string} [args.context] - optional extra context (job name, prospect)
  * @returns {Promise<boolean>} true if a ping was posted, false if skipped
  */
-export async function notifyEmailDown(env, { bot, to, subject, reason, context } = {}) {
+export async function notifyEmailDown(env, { bot, to, subject, reason, context, channelSlug } = {}) {
   try {
     const entry = BOT_HOME_CHANNELS[String(bot || "").toLowerCase()];
     if (!entry) {
@@ -90,7 +91,12 @@ export async function notifyEmailDown(env, { bot, to, subject, reason, context }
 
     // Dedup on bot + a coarse slice of the error so an outage collapses to one
     // ping, but a genuinely different failure still gets through.
-    const dedupKey = `${entry.slug}:${String(reason || "").slice(0, 80)}`;
+    // A bot may route its outage pings somewhere other than its home channel.
+    // Courtney does: her home channel is for conversation, notices live in
+    // courtney-cases. The home entry still supplies the posting key.
+    const slug = channelSlug || entry.slug;
+
+    const dedupKey = `${slug}:${String(reason || "").slice(0, 80)}`;
     if (_isDuplicate(dedupKey)) return false;
 
     const body = [
@@ -102,7 +108,7 @@ export async function notifyEmailDown(env, { bot, to, subject, reason, context }
       context ? `Context: ${context}` : null,
     ].filter((l) => l !== null).join("\n");
 
-    const res = await postToNexus(env, entry.slug, body, {
+    const res = await postToNexus(env, slug, body, {
       nexusKeyEnvVar: entry.keyEnvVar,
       provenance: "system-alert",
       postedVia: "emailDownBackup",
