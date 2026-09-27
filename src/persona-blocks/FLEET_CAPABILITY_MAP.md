@@ -129,6 +129,16 @@ to Flynn.
 - **Xero** is split two ways: Dexter reads, Maxwell reads and writes.
 - **Email-auth and DNS:** Robert assesses the posture, Dexter makes the
   record change once a fix is decided.
+- **External scanning of a client's public footprint** is split by URGENCY,
+  not by tool, since 2026-09-27. Robert runs DAILY only what is both time
+  sensitive and free: look-alike domain registration, DNS drift, MX blocklist
+  listings, email-auth records, OpenPhish hits. Hawkeye runs ONE monthly pass
+  for everything that does not change day to day: certificate inventory and
+  expiry, IP reputation, breach and dark web, urlscan, web edge, WHOIS. Robert
+  no longer touches certificate transparency or AbuseIPDB at all. Do not
+  reinstate either in Robert: scanning the same surface from two workers is
+  what this split removed. "When was this client last scanned?" is a Hawkeye
+  question.
 - **"Cadence"** means three different things: Jacob's cold outbound, Wren's
   event intros, Moxie's posting schedule.
 - **The CRM** is read-only for everyone except Jacob.
