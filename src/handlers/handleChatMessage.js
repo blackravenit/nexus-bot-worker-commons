@@ -598,6 +598,11 @@ export async function runLlmPipeline({
     // Fed into the multimodal hand-off so the bot can SEE a GIF someone posted
     // a message or two ago when asked about it (not just the current turn).
     let historyGifUrls = [];
+    // Most-recent image ATTACHMENT in the channel, same focus rule as GIFs.
+    // A filename in the context block is not a picture: the bot read
+    // "[attachments: minions.png ...]" and still answered "no picture came
+    // through", because nothing put an image block in front of the model.
+    let historyImageAtts = [];
     // FleetView turns skip channel context entirely. channel_slug there is the
     // bot's home channel, which Brian is not looking at and did not ask about,
     // so the fetch buys nothing and costs a Nexus round trip plus a pile of
@@ -659,6 +664,21 @@ export async function runLlmPipeline({
           for (let i = recentMsgs.length - 1; i >= 0; i--) {
             for (const u of extractGifUrls(recentMsgs[i].body || "")) {
               if (!historyGifUrls.includes(u)) historyGifUrls.push(u);
+            }
+            // The history route returns attachment metadata without a url;
+            // synthesize the internal-token path that
+            // buildAttachmentContentBlocks fetches from.
+            for (const a of recentMsgs[i].attachments || []) {
+              if (!a?.id) continue;
+              if (!String(a.mime_type || "").toLowerCase().startsWith("image/")) continue;
+              if (historyImageAtts.some((h) => h.id === a.id)) continue;
+              historyImageAtts.push({
+                id: a.id,
+                filename: a.filename,
+                mime_type: a.mime_type,
+                size_bytes: a.size_bytes,
+                url: `/api/internal/attachments/${a.id}`,
+              });
             }
           }
           const lines = recentMsgs
@@ -794,6 +814,19 @@ export async function runLlmPipeline({
       attachmentWarnings = warnings;
       mediaBlocks.push(...blocks);
     }
+    // Same focus rule as GIFs: when the mention itself carries no upload, show
+    // the single most-recent image posted in the channel. Brian posts a picture
+    // and @mentions the bot in the NEXT message constantly; without this the
+    // bot is the only one in the room who cannot see it.
+    let usedHistoryImage = false;
+    if ((!Array.isArray(attachments) || attachments.length === 0) && historyImageAtts.length > 0) {
+      const { blocks, warnings } = await buildAttachmentContentBlocks(env, historyImageAtts.slice(0, 1));
+      if (blocks.length > 0) {
+        usedHistoryImage = true;
+        mediaBlocks.push(...blocks);
+      }
+      if (warnings.length) attachmentWarnings = attachmentWarnings.concat(warnings);
+    }
     // GIF focus rule: only auto-attach the GIF the conversation is actually
     // about, so the bot stops reacting to stale GIFs scrolled up in history.
     //  - If the user posted GIF(s) WITH this message, those are the subject.
@@ -811,6 +844,11 @@ export async function runLlmPipeline({
         Array.isArray(attachments) && attachments.length
           ? attachments.map((a) => `${a.filename || a.id} [id=${a.id}] (${a.mime_type || "unknown"})`).join(", ")
           : "";
+      const historyImageNote = usedHistoryImage
+        ? `
+
+[the most recent image posted in this channel (${historyImageAtts[0].filename || historyImageAtts[0].id}) is shown above. It was posted moments before this message, so treat it as what the user is asking about. To discuss an older one, load it with nexus_load_attachment]`
+        : "";
       const gifNote = gifBlocks.length
         ? usedHistoryGif
           ? `\n\n[the most recent GIF in this channel is shown above -- focus on it; only if the user clearly asks about a different or older GIF, load that one with nexus_view_gif]`
@@ -819,6 +857,7 @@ export async function runLlmPipeline({
       const turnText =
         `${labeledUserText}` +
         (blockTextSummary ? `\n\n[attached files: ${blockTextSummary}]` : "") +
+        historyImageNote +
         gifNote +
         (attachmentWarnings.length ? `\n[attachment warnings: ${attachmentWarnings.join(" ")}]` : "");
       userContent = [...mediaBlocks, { type: "text", text: turnText }];
