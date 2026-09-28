@@ -234,6 +234,11 @@ async function _bearerPostWithRetry(url, body, apiKey, attempts = 3) {
  * @param {object} [options]
  * @param {string} [options.nexusKeyEnvVar] - env var name holding the API key
  * @param {string[]} [options.attachment_ids] - attachment ids from uploadBotAttachment
+ * @param {boolean} [options.silent] - post WITHOUT firing channel notifications.
+ *   For a scheduled bulk run only: a batch of per-client reports fires one push
+ *   per channel, and a channel that pings 27 times in a minute stops being read.
+ *   The message is still inserted, broadcast and readable, and an @mention in it
+ *   still notifies the person named. NEVER use it for an alert.
  * @returns {Promise<object|null>} Nexus message object with .id, or null on error
  */
 export async function postToNexus(env, slug, content, options = {}) {
@@ -271,6 +276,7 @@ export async function postToNexus(env, slug, content, options = {}) {
     if (attachmentIds) {
       // Channel-gated Bearer route. Required for attachments; provenance mandatory.
       const payload = { body, attachment_ids: attachmentIds };
+      if (options.silent === true) payload.silent = true;
       if (options.reply_to) payload.reply_to = options.reply_to;
       payload.provenance = provenance || "scheduled-cron";
       const result = await _bearerPost(
@@ -284,6 +290,7 @@ export async function postToNexus(env, slug, content, options = {}) {
     }
 
     const payload = { channel_slug: slug, body };
+    if (options.silent === true) payload.silent = true;
     if (options.reply_to) payload.reply_to = options.reply_to;
     if (provenance) payload.provenance = provenance;
     const result = await _post(
