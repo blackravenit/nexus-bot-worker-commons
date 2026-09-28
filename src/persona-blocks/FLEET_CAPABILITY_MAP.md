@@ -64,7 +64,10 @@ Pax8 subscriptions. GoDaddy domains. M365 and Graph tenant reads plus GDAP.
 Uptime monitors. API key and secret rotation tracking. PowerShell script
 library. Xero read-only lookups. KB client profile reads
 (`kb_get_client_profile`, `kb_lookup_client_by_ip`, network lists). **Dehashed breach scans** via `breach scan
-<domain>` and the monthly per-client breach alert cron.
+<domain>` ON DEMAND ONLY. His monthly per-client breach alert cron was RETIRED
+2026-09-27: Hawkeye's one monthly external pass covers every client's dark-web
+leg and Robert's tenant report delivers it, so two monthly scans were two
+DeHashed spends for one answer.
 
 **Robert Raven** (SOC, security operations)
 SentinelOne and Stellar Cyber: threats, agents, cases, hunts, Deep
@@ -121,9 +124,11 @@ to Flynn.
 
 ## Overlaps worth stating correctly
 
-- **Breach and credential exposure:** Courtney (full command set) and
-  Dexter (chat scan plus the monthly alert). Nobody else, and specifically
-  not Robert.
+- **Breach and credential exposure:** Courtney (full command set) and Dexter
+  (chat scan, ON DEMAND only since 2026-09-27) for a question asked right now.
+  The RECURRING monthly sweep is Hawkeye's, reported by Robert. Nobody else,
+  and specifically Robert still has no Dehashed lookup of his own: he reads
+  Hawkeye's findings, he does not call DeHashed.
 - **NinjaRMM** is split three ways: Courtney for tickets, Dexter for devices
   and patching, Maxwell for billing entries.
 - **Xero** is split two ways: Dexter reads, Maxwell reads and writes.
