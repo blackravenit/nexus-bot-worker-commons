@@ -78,3 +78,30 @@ test('recordingSidFromUrl pulls the sid out of a stored Twilio URL', () => {
 test('the default TTL is hours, not days', () => {
   assert.ok(PLAYBACK_TTL_SEC > 0 && PLAYBACK_TTL_SEC <= 24 * 3600);
 });
+
+test('persona is part of the signature, because it picks Twilio credentials', async () => {
+  // A subaccount persona (fieldpilot) has its own Twilio credentials, so persona
+  // selects which account the bridge queries. Leaving it out of the signed string
+  // would make it a caller-editable input to that choice.
+  const url = await signPlaybackUrl(ENV, SID, { persona: 'fieldpilot' });
+  assert.match(url, /persona=fieldpilot/);
+  const ok = await verifyPlaybackRequest(ENV, new URL(url));
+  assert.equal(ok.ok, true);
+  assert.equal(ok.persona, 'fieldpilot');
+
+  const swapped = new URL(url);
+  swapped.searchParams.set('persona', 'jacob');
+  assert.equal((await verifyPlaybackRequest(ENV, swapped)).ok, false, 'persona must not be swappable');
+
+  const dropped = new URL(url);
+  dropped.searchParams.delete('persona');
+  assert.equal((await verifyPlaybackRequest(ENV, dropped)).ok, false, 'persona must not be removable');
+});
+
+test('a link with no persona still verifies, for accounts on the master', async () => {
+  const url = await signPlaybackUrl(ENV, SID);
+  assert.ok(!url.includes('persona='));
+  const ok = await verifyPlaybackRequest(ENV, new URL(url));
+  assert.equal(ok.ok, true);
+  assert.equal(ok.persona, '');
+});

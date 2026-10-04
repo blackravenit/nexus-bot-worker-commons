@@ -82,6 +82,9 @@ export function recordingSidFromUrl(url) {
  * @param {string} sid
  * @param {object} [opts]
  * @param {string} [opts.host] - the bridge host to point at
+ * @param {string} [opts.persona] - whose Twilio account owns the recording. Signed,
+ *   because it selects which credentials the bridge queries with: a subaccount
+ *   persona like fieldpilot has its own, so this must not be caller-editable.
  * @param {number} [opts.ttlSec]
  * @param {number} [opts.now] - ms, for tests
  * @returns {Promise<string>} the URL, or '' when it cannot be signed
@@ -94,8 +97,10 @@ export async function signPlaybackUrl(env, sid, opts = {}) {
       .replace(/^https?:\/\//, '').replace(/\/$/, '');
   const nowMs = opts.now ?? Date.now();
   const exp = Math.floor(nowMs / 1000) + (opts.ttlSec ?? PLAYBACK_TTL_SEC);
-  const sig = await hmacHex(key, `${sid}.${exp}`);
-  return `https://${host}/audio/recording?sid=${encodeURIComponent(sid)}&exp=${exp}&sig=${sig}`;
+  const persona = String(opts.persona || "").toLowerCase();
+  const sig = await hmacHex(key, `${sid}.${exp}.${persona}`);
+  const q = `sid=${encodeURIComponent(sid)}&exp=${exp}${persona ? `&persona=${encodeURIComponent(persona)}` : ""}&sig=${sig}`;
+  return `https://${host}/audio/recording?${q}`;
 }
 
 /**
@@ -130,7 +135,8 @@ export async function verifyPlaybackRequest(env, url, nowMs = Date.now()) {
   if (!isRecordingSid(sid)) return { ok: false, reason: 'bad sid' };
   if (!Number.isFinite(exp) || exp <= 0) return { ok: false, reason: 'bad exp' };
   if (Math.floor(nowMs / 1000) > exp) return { ok: false, reason: 'link expired' };
-  const expected = await hmacHex(key, `${sid}.${exp}`);
+  const persona = (url.searchParams.get('persona') || '').toLowerCase();
+  const expected = await hmacHex(key, `${sid}.${exp}.${persona}`);
   if (!timingSafeEqualHex(sig, expected)) return { ok: false, reason: 'bad signature' };
-  return { ok: true, sid };
+  return { ok: true, sid, persona };
 }
