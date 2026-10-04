@@ -205,3 +205,7 @@ export {
 } from "./lib/voiceJoin.js";
 export { createBangCommandTool } from "./lib/voiceBangCommand.js";
 export { buildMimeMessage, sendMimeEmail } from "./lib/mimeEmail.js";
+export {
+  signPlaybackUrl, verifyPlaybackRequest, recordingSidFromUrl, isRecordingSid,
+  playbackSigningKey, PLAYBACK_TTL_SEC,
+} from "./lib/recordingPlayback.js";
