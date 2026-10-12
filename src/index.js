@@ -82,6 +82,7 @@ export {
 } from "./lib/fleetviewDelivery.js";
 export { applyVoicePronunciation } from "./lib/ttsPronunciation.js";
 export { crmReadTools, crmReadHandlers } from "./lib/crmCodes.js";
+export { isInternalRow, internalSkipReason, INTERNAL_COGS_ACCOUNT } from "./lib/internalClient.js";
 export {
   kbProfileReadTools, kbProfileReadHandlers,
   kbProfileWriteTools, kbProfileWriteHandlers,
