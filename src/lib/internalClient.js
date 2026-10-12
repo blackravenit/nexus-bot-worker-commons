@@ -37,6 +37,13 @@
 /** GL expense account for internal staff equipment (Xero 6080). */
 export const INTERNAL_COGS_ACCOUNT = "6080";
 
+// The exact vocabulary crm-app's truthyFlag() accepts when WRITING the column
+// (routes/_crud.js). A reader that accepts less than its writer is a gate that
+// disagrees with the record it is gating on: a row written from "true" would
+// store 1, yet an in-flight row still carrying the string "true" would read as
+// not-internal. Same list on both sides, so there is no differential.
+const TRUTHY = new Set([true, 1, "1", "true"]);
+
 /**
  * True when a row describes our own internal client.
  *
@@ -47,14 +54,31 @@ export const INTERNAL_COGS_ACCOUNT = "6080";
  * Both the list and single-record opportunity endpoints already return the
  * joined flag, so a job holding an opportunity needs no extra client fetch.
  *
- * Compares loosely on purpose: D1 stores the column as INTEGER, but the value
- * arrives over the API as a number and through a form as the string "1".
+ * Either field saying internal is enough. It is deliberately OR, not a
+ * precedence chain: a caller that merges an opportunity over its client, or
+ * fetches one of the two partially, would otherwise let an absent or zero
+ * field overrule a present 1 and leak a client-facing action onto our own
+ * books. No real client ever carries a 1 in either field, so OR cannot
+ * suppress a paying customer's paperwork.
+ *
+ * KNOWN LIMIT, and the thing to re-check if this ever misfires: absence reads
+ * as NOT internal. That direction is chosen (see below), but it means the gate
+ * depends on the CRM continuing to serve the field. If a future change drops
+ * `client_is_internal` from an opportunity payload, every caller silently
+ * fails open. The jobs where that would cost real money keep a second,
+ * independent reason to stop.
+ *
+ * Why absence is not treated as internal: this gate suppresses contracts,
+ * invoices, onboarding and outbound mail. Defaulting an unknown row to
+ * internal would stop a paying client's paperwork with no error raised
+ * anywhere, which is both more likely and harder to notice than the converse.
  *
  * @param {object|null|undefined} row Client, opportunity or contract row.
  * @returns {boolean} True only for a confirmed internal row; false when absent.
  */
 export function isInternalRow(row) {
-  return Number(row?.is_internal ?? row?.client_is_internal) === 1;
+  if (!row) return false;
+  return TRUTHY.has(row.is_internal) || TRUTHY.has(row.client_is_internal);
 }
 
 /**
