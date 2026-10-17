@@ -166,6 +166,7 @@ export const FLEET_RUBRICS = {
     "4. HUMAN VOICE: no AI-slop tells (em-dash cadence, 'in today's fast-paced world', 'game-changer', 'Let that sink in', rhetorical-question stacking, unearned profundity).",
     "5. HONESTY: no invented statistics, fake anecdotes presented as real, or overclaimed results.",
     "6. AUDIENCE FIT: matches the brand context provided. A B2B security post in influencer voice (or vice versa) is a FAIL.",
+    "7. SOURCE FIDELITY ON THIRD-PARTY CLAIMS (hard fail): any assertion about what a named company, person, or organization says, admits, states, publishes, or does must either (a) quote the source's actual words, or (b) carry explicit attribution to a named outlet or document ('per TechCrunch', 'their product page lists...'). A flat 'X's own website says Y' or 'the CEO admitted Z' where Y/Z is the author's paraphrase presented as the source's words is a FAIL. Strengthening a claim beyond the source ('detects other sounds' escalated to 'captures conversations') is a FAIL even when the underlying story is real; commenters WILL ask 'where does it say that', and the post must survive that question. When SOURCE MATERIAL appears in the context below, any third-party claim that exceeds what it supports is a FAIL. First-person opinion and clearly-framed analysis need no source; only claims about what a third party said or did trigger this rule.",
   ].join("\n"),
 
   "holiday-greeting": [
