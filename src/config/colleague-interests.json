@@ -1,0 +1,46 @@
+{
+  "_comment": [
+    "Who at Black Raven IT cares about what, so a bot posting in #watercooler can pull",
+    "the right person into a topic they actually like (Brian, 2026-10-21: 'when Jacob",
+    "talks Fourrunners, @william').",
+    "",
+    "EVERY entry here is evidence, not a guess. These were read off the people's own",
+    "#watercooler messages in the Nexus D1 (William on 4Runners and Land Cruisers, Edgar",
+    "on his tile work, Joseph on Chicago storms and the train, and so on). A bot naming a",
+    "real coworker is a claim about that coworker, so an invented interest is a",
+    "fabrication with their name attached. Add a line only when you have actually seen",
+    "the person say it.",
+    "",
+    "'handle' is what goes in the message. Nexus resolves a mention against the display",
+    "name, the UPN local part, the FIRST WORD of the display name, and any alias, so a",
+    "bare first name works and notifies. 'match' holds the words in a post that should",
+    "pull this person in; keep them specific, since a loose word like 'car' drags someone",
+    "into every thread."
+  ],
+  "colleagues": [
+    {
+      "handle": "william",
+      "name": "William Knifeman",
+      "interests": "Toyota 4Runners and Land Cruisers, overlanding and off-road builds, firearms and shooting sports, suppressors and the NFA paperwork that comes with them, fantasy football",
+      "match": ["4runner", "4-runner", "land cruiser", "landcruiser", "toyota", "overland", "off-road", "offroad", "trail rig", "suppressor", "nfa", "form 4", "firearm", "handgun", "pistol", "rifle", "shooting range", "gun range", "fantasy football", "fantasy draft"]
+    },
+    {
+      "handle": "edgar",
+      "name": "Edgar Poe",
+      "interests": "home renovation, tile and grout work he does himself, projects with his daughter, being at the keyboard hours before anyone else",
+      "match": ["renovation", "remodel", "tile", "grout", "drywall", "home project", "diy", "woodworking", "power tools", "early riser", "up before dawn"]
+    },
+    {
+      "handle": "ryan",
+      "name": "Ryan Sarkar",
+      "interests": "the Metra commute, weekends out with friends, the shooting range",
+      "match": ["metra", "commuter train", "train delay", "shooting range", "gun range", "range day", "drinking games"]
+    },
+    {
+      "handle": "joseph",
+      "name": "Joseph Kajmowicz",
+      "interests": "Chicago weather, big storms, and what they do to the train schedule",
+      "match": ["chicago weather", "severe storm", "thunderstorm", "blizzard", "lake effect", "metra", "commuter train", "train delay", "tornado"]
+    }
+  ]
+}

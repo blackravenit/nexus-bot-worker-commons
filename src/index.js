@@ -138,6 +138,12 @@ export {
 export { makeShouldRespond } from "./lib/triggers.js";
 export { shouldChimeIn } from "./lib/watercooler.js";
 export {
+  COLLEAGUES,
+  findInterestedColleagues,
+  buildColleagueMentionRules,
+  weaveColleagueMention,
+} from "./lib/colleagues.js";
+export {
   safeEmbedTitle,
   bangReport,
   bangAlert,
