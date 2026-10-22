@@ -59,6 +59,7 @@
 // =============================================================================
 
 import { withRetry, isRetryableAnthropicError } from "./retry.js";
+import { egressFetch } from "./aiEgress.js";
 import { reportUsage } from "./usageReport.js";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
@@ -263,7 +264,7 @@ function resolveAnthropicRoute(env, surface) {
  * @param {{ url?: string, metadata?: object }} [route]
  * @returns {Promise<object>} Parsed JSON response
  */
-async function _post(apiKey, body, route = {}) {
+async function _post(apiKey, body, route = {}, env = null) {
   const url = route.url || API_URL;
   const headers = {
     "x-api-key": apiKey,
@@ -282,7 +283,11 @@ async function _post(apiKey, body, route = {}) {
     async () => {
       let res;
       try {
-        res = await fetch(url, {
+        // egressFetch pins the call to Eastern North America when the caller
+        // binds AI_EGRESS, because a cron tick otherwise runs wherever
+        // Cloudflare has capacity and Anthropic 403s anything from Hong Kong.
+        // Without the binding this is exactly the plain fetch it always was.
+        res = await egressFetch(env, url, {
           method: "POST",
           headers,
           body: JSON.stringify(body),
@@ -374,7 +379,7 @@ export async function callAnthropic(env, systemPrompt, messages, options = {}) {
   if (serverTools) body.tools = serverTools;
 
   const route = resolveAnthropicRoute(env, options.surface);
-  let data = await _post(apiKey, body, route);
+  let data = await _post(apiKey, body, route, env);
 
   let allContent = Array.isArray(data?.content) ? [...data.content] : [];
   if (serverTools) {
@@ -389,7 +394,7 @@ export async function callAnthropic(env, systemPrompt, messages, options = {}) {
     while (data.stop_reason === "pause_turn" && continuations < 2) {
       continuations++;
       workingMessages = [...workingMessages, { role: "assistant", content: data.content }];
-      data = await _post(apiKey, { ...body, messages: applyMessageCache(workingMessages, env) }, route);
+      data = await _post(apiKey, { ...body, messages: applyMessageCache(workingMessages, env) }, route, env);
       if (Array.isArray(data?.content)) allContent.push(...data.content);
     }
     if (typeof options.onServerToolContent === "function") {
@@ -539,7 +544,7 @@ export async function callAnthropicWithTools(env, systemPrompt, messages, tools,
   response = await _post(apiKey, {
     ...baseParams,
     messages: applyMessageCache(workingMessages, env),
-  }, route);
+  }, route, env);
   if (response.usage) {
     usageAcc.input_tokens += response.usage.input_tokens || 0;
     usageAcc.output_tokens += response.usage.output_tokens || 0;
@@ -567,7 +572,7 @@ export async function callAnthropicWithTools(env, systemPrompt, messages, tools,
       response = await _post(apiKey, {
         ...baseParams,
         messages: applyMessageCache(workingMessages, env),
-      }, route);
+      }, route, env);
       if (response.usage) {
         usageAcc.input_tokens += response.usage.input_tokens || 0;
         usageAcc.output_tokens += response.usage.output_tokens || 0;
@@ -611,7 +616,7 @@ export async function callAnthropicWithTools(env, systemPrompt, messages, tools,
           ...baseParams,
           tool_choice: { type: "none" },
           messages: applyMessageCache(workingMessages, env),
-        }, route);
+        }, route, env);
         if (response.usage) {
           usageAcc.input_tokens += response.usage.input_tokens || 0;
           usageAcc.output_tokens += response.usage.output_tokens || 0;
@@ -688,7 +693,7 @@ export async function callAnthropicWithTools(env, systemPrompt, messages, tools,
     response = await _post(apiKey, {
       ...baseParams,
       messages: applyMessageCache(workingMessages, env),
-    }, route);
+    }, route, env);
     if (response.usage) {
       usageAcc.input_tokens += response.usage.input_tokens || 0;
       usageAcc.output_tokens += response.usage.output_tokens || 0;
