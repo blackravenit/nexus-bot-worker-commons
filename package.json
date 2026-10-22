@@ -10,6 +10,7 @@
     "./handlers/handleChatMessage": "./src/handlers/handleChatMessage.js",
     "./handlers/handleCommandList": "./src/handlers/handleCommandList.js",
     "./lib/anthropic": "./src/lib/anthropic.js",
+    "./lib/aiEgress": "./src/lib/aiEgress.js",
     "./lib/contentJudge": "./src/lib/contentJudge.js",
     "./lib/actionTrace": "./src/lib/actionTrace.js",
     "./lib/callbackSign": "./src/lib/callbackSign.js",
