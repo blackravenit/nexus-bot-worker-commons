@@ -1,6 +1,6 @@
 {
   "name": "nexus-bot-worker-commons",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Shared Nexus bot Worker scaffolding: chat callback handler, Anthropic tool-use loop, HMAC verify, D1 history/facts, HITL approval cards. Workers globals only, no runtime deps. Consumed via file:../nexus-bot-worker-commons by each per-bot worker.",

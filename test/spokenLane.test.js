@@ -120,3 +120,15 @@ test("addendum text is the agreed wording", () => {
   assert.ok(SPOKEN_ADDENDUM.includes("two to four sentences"));
   assert.ok(SPOKEN_ADDENDUM.includes("on it"));
 });
+
+import { thinkingOffFor } from "../src/lib/anthropic.js";
+import { test as tOff } from "node:test";
+import assertOff from "node:assert/strict";
+
+tOff("thinkingOffFor picks between_tools for the 5.5 models and disabled otherwise", () => {
+  assertOff.deepEqual(thinkingOffFor("claude-sonnet-5-5"), { type: "between_tools" });
+  assertOff.deepEqual(thinkingOffFor("claude-haiku-5-5"), { type: "between_tools" });
+  assertOff.deepEqual(thinkingOffFor("claude-opus-5-5"), { type: "between_tools" });
+  assertOff.deepEqual(thinkingOffFor("claude-sonnet-5"), { type: "disabled" });
+  assertOff.deepEqual(thinkingOffFor("claude-opus-4-7"), { type: "disabled" });
+});

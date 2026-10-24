@@ -66,6 +66,17 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 const DEFAULT_MODEL = "claude-opus-4-7";
 const MAX_TOKENS = 4096;
+
+/**
+ * The "thinking off" setting a model accepts. Sonnet 5.5 and Haiku 5.5 never
+ * think before responding and reject { type: "disabled" } with a 400; their
+ * off switch is { type: "between_tools" }. Older paths keep "disabled".
+ * @param {string} model - Anthropic model id
+ * @returns {{type: string}} thinking parameter
+ */
+export function thinkingOffFor(model) {
+  return /-5-5(?![0-9])/.test(String(model)) ? { type: "between_tools" } : { type: "disabled" };
+}
 const TIMEOUT_MS = 60000;
 const MAX_TOOL_ITERATIONS = 10;
 // Cache TTL for the stable prefix. 5m, because a 1h write costs 1.00x base
@@ -369,7 +380,7 @@ export async function callAnthropic(env, systemPrompt, messages, options = {}) {
     // paths that never wanted it. Pin disabled by default; a caller opts a
     // specific job into adaptive by passing options.thinking. No-op on the
     // Haiku/Sonnet-4.6 paths that already ran thinking-off. (2026-07-01 fleet bump.)
-    thinking: options.thinking || { type: "disabled" },
+    thinking: options.thinking || thinkingOffFor(model),
     system: buildSystemBlocks(systemPrompt, env),
     messages: applyMessageCache(
       withSessionContext(normalizeLeadingRole(messages), options.sessionContext),
@@ -517,7 +528,7 @@ export async function callAnthropicWithTools(env, systemPrompt, messages, tools,
     max_tokens: options.maxTokens || MAX_TOKENS,
     // Pin thinking disabled by default (see callAnthropic note). Opt a job into
     // adaptive via options.thinking. No-op on Haiku/Sonnet-4.6 paths. (2026-07-01)
-    thinking: options.thinking || { type: "disabled" },
+    thinking: options.thinking || thinkingOffFor(model),
     system: buildSystemBlocks(systemPrompt, env),
     tools: toolsWithCache,
   };
