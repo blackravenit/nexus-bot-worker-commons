@@ -54,6 +54,10 @@ import { scrubFleetDashes } from "../lib/sanitize.js";
 import { collectSearchResultUrls, groundUrlsInText } from "../lib/researchShare.js";
 import { applyRelayToolPolicy, relayModeSystemNote, mirrorRelayReply } from "../lib/fleetRelay.js";
 import { isFleetViewSource, deliverFleetViewReply } from "../lib/fleetviewDelivery.js";
+import {
+  isSpokenRequest, pickTurnModel, pickMaxTokens, raceRecallBudget, laneTimings,
+  SPOKEN_ADDENDUM, SPOKEN_TOOL_BUDGET, SPOKEN_RECALL_BUDGET_MS,
+} from "../lib/spokenLane.js";
 
 // Detect GIF-only messages so bots receive "[GIF image: <url>]" instead of
 // a bare CDN URL they cannot interpret.
@@ -476,6 +480,7 @@ export async function runLlmPipeline({
   reply_webhook,
   thread_id,
   dispatched_at,
+  spoken = false,
   config,
 }) {
   // FleetView turns run this identical pipeline (same persona, tools, memory,
@@ -506,9 +511,11 @@ export async function runLlmPipeline({
   // channel persona. Set FLEETVIEW_MODEL only to deliberately trade quality
   // for latency again.
   const nexusModel = env.CLAUDE_MODEL || "claude-opus-4-7";
-  const effectiveModel = fleetView
+  const laneDefaultModel = fleetView
     ? (env.FLEETVIEW_MODEL || nexusModel)
     : nexusModel;
+  // The spoken fast lane swaps in the voice model; normal turns are untouched.
+  const effectiveModel = pickTurnModel(env, { spoken, defaultModel: laneDefaultModel });
   const nexusOptions = { nexusKeyEnvVar: config.nexusKeyEnvVar };
   // When the triggering message was part of a thread, reply_to is the
   // parent message id. Thread the same reply_to into every outbound post
@@ -907,7 +914,9 @@ export async function runLlmPipeline({
         // search). On a spoken turn that is a long time to stand there saying
         // nothing, so FleetView bounds it: answer with what we know rather than
         // wait indefinitely to know more. Nexus turns wait as long as it takes.
-        memoryRecallBlock = fleetView
+        memoryRecallBlock = spoken
+          ? await raceRecallBudget(recall(), SPOKEN_RECALL_BUDGET_MS)
+          : fleetView
           ? await Promise.race([
             recall(),
             new Promise((resolve) => setTimeout(() => {
@@ -1079,7 +1088,7 @@ export async function runLlmPipeline({
     const stableGuidance = NEXUS_MENTION_RULE + NEXUS_ACTION_INTEGRITY + NEXUS_INFRA_GROUNDING
       + NEXUS_STYLE_CLOSE + SESSION_CONTEXT_NOTE;
     const sessionContext = (factsBlock || "") + NEXUS_CONTEXT + NEXUS_EMAIL_SAFETY + NEXUS_TODAY
-      + FLEETVIEW_SURFACE + RELAY_MODE + historyFoldBlock + memoryRecallBlock + threadContextBlock
+      + FLEETVIEW_SURFACE + (spoken ? SPOKEN_ADDENDUM : "") + RELAY_MODE + historyFoldBlock + memoryRecallBlock + threadContextBlock
       + channelContextBlock + hitlContextBlock;
     const systemPromptWithFacts = [
       { text: systemPrompt + stableGuidance, cache: true },
@@ -1363,7 +1372,10 @@ export async function runLlmPipeline({
       // FLEETVIEW_MODEL override exists for anyone willing to trade answer
       // quality for spoken-turn latency (Sonnet costs ~1.6s to first token
       // where Haiku costs ~0.5s).
-      ...(fleetView ? { model: effectiveModel } : {}),
+      ...(fleetView || spoken ? { model: effectiveModel } : {}),
+      // Spoken lane: short output and a two-round tool budget. Spread only when
+      // spoken so a normal turn's options object is exactly what it was.
+      ...(spoken ? { maxTokens: pickMaxTokens(true), maxToolIterations: SPOKEN_TOOL_BUDGET } : {}),
       // Re-arm the typing indicator before every Anthropic POST so
       // long tool loops (>90s total) don't lose the indicator on the
       // DO TTL. The initial start is sent above; this catches turns
@@ -1583,7 +1595,7 @@ export async function runLlmPipeline({
         toolTrace,
         stagedAction,
         nexusOptions,
-        timings: { ...marks, total: Date.now() - t0 },
+        timings: { ...marks, total: Date.now() - t0, ...laneTimings(spoken, effectiveModel) },
       });
     } catch (err) {
       console.error("[handleChatMessage] fleetview delivery error:", err.message);
@@ -2226,6 +2238,9 @@ async function handleChatMessageInner(request, env, ctx, config) {
     source,
     reply_webhook,
     thread_id,
+    // FleetView voice lane flags: voice === true or reply_style === "spoken".
+    voice,
+    reply_style,
     // When Nexus/FleetView sent this. Used only to measure how long the job
     // waited for the LlmRoom alarm to fire.
     timestamp,
@@ -2569,6 +2584,8 @@ async function handleChatMessageInner(request, env, ctx, config) {
     source: source || undefined,
     reply_webhook: reply_webhook || undefined,
     thread_id: thread_id || undefined,
+    // Spoken fast lane; omitted when false so normal jobs are unchanged.
+    spoken: isSpokenRequest({ voice, reply_style }) || undefined,
   };
 
   ctx.waitUntil(dispatchLlmJob(env, historyKey, llmJob, config));

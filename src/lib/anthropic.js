@@ -530,6 +530,8 @@ export async function callAnthropicWithTools(env, systemPrompt, messages, tools,
     options.sessionContext,
   );
   let iterations = 0;
+  // options.maxToolIterations lowers the loop ceiling for one call (spoken lane).
+  const toolIterationCap = Math.min(MAX_TOOL_ITERATIONS, options.maxToolIterations || MAX_TOOL_ITERATIONS);
   let response;
   let turnIndex = 0;
   const usageAcc = { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 };
@@ -582,7 +584,7 @@ export async function callAnthropicWithTools(env, systemPrompt, messages, tools,
       continue;
     }
     iterations++;
-    if (iterations > MAX_TOOL_ITERATIONS) {
+    if (iterations > toolIterationCap) {
       // The model still wants tools but has spent its budget. Breaking here
       // leaves `response` holding only tool_use blocks, so extractText() returns
       // "" and the caller posts nothing -- the user watches the typing indicator
