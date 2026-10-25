@@ -80,7 +80,7 @@ export function shouldMirrorToHomeChannel(answer, signals = {}) {
  * @param {object} env - worker bindings
  * @returns {Record<string, string>}
  */
-function accessServiceTokenHeaders(env) {
+export function accessServiceTokenHeaders(env) {
   const clientId = env.FLEETVIEW_ACCESS_CLIENT_ID;
   const clientSecret = env.FLEETVIEW_ACCESS_CLIENT_SECRET;
   if (!clientId || !clientSecret) {

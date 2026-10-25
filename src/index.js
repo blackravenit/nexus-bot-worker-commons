@@ -81,6 +81,13 @@ export {
   shouldMirrorToHomeChannel,
   FLEETVIEW_SOURCE,
 } from "./lib/fleetviewDelivery.js";
+export {
+  fleetviewReportTool,
+  createFleetviewReportHandler,
+  injectFleetviewReport,
+  shouldInjectFleetviewReport,
+} from "./lib/fleetviewReport.js";
+export { CHART_FENCE_GUIDE } from "./lib/reportChartSpec.js";
 export { applyVoicePronunciation } from "./lib/ttsPronunciation.js";
 export { crmReadTools, crmReadHandlers } from "./lib/crmCodes.js";
 export { isInternalRow, internalSkipReason, INTERNAL_COGS_ACCOUNT } from "./lib/internalClient.js";

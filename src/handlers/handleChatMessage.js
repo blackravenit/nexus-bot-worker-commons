@@ -54,6 +54,7 @@ import { scrubFleetDashes } from "../lib/sanitize.js";
 import { collectSearchResultUrls, groundUrlsInText } from "../lib/researchShare.js";
 import { applyRelayToolPolicy, relayModeSystemNote, mirrorRelayReply } from "../lib/fleetRelay.js";
 import { isFleetViewSource, deliverFleetViewReply } from "../lib/fleetviewDelivery.js";
+import { injectFleetviewReport, shouldInjectFleetviewReport, FLEETVIEW_REPORT_PROMPT } from "../lib/fleetviewReport.js";
 import {
   isSpokenRequest, pickTurnModel, pickMaxTokens, raceRecallBudget, laneTimings,
   SPOKEN_ADDENDUM, SPOKEN_TOOL_BUDGET, SPOKEN_RECALL_BUDGET_MS,
@@ -1085,8 +1086,9 @@ export async function runLlmPipeline({
     // NEXUS_EMAIL_SAFETY look static but both embed the speaker's name and
     // address, which change per message in a multi-person channel, so they ride
     // the session block too.
+    const reportToolWanted = shouldInjectFleetviewReport(config.tools?.definitions, config.tools?.handlers, env);
     const stableGuidance = NEXUS_MENTION_RULE + NEXUS_ACTION_INTEGRITY + NEXUS_INFRA_GROUNDING
-      + NEXUS_STYLE_CLOSE + SESSION_CONTEXT_NOTE;
+      + NEXUS_STYLE_CLOSE + SESSION_CONTEXT_NOTE + (reportToolWanted ? FLEETVIEW_REPORT_PROMPT : "");
     const sessionContext = (factsBlock || "") + NEXUS_CONTEXT + NEXUS_EMAIL_SAFETY + NEXUS_TODAY
       + FLEETVIEW_SURFACE + (spoken ? SPOKEN_ADDENDUM : "") + RELAY_MODE + historyFoldBlock + memoryRecallBlock + threadContextBlock
       + channelContextBlock + hitlContextBlock;
@@ -1341,6 +1343,12 @@ export async function runLlmPipeline({
       nexus_view_gif: viewGifHandler,
       remember: rememberHandler,
     };
+
+    if (reportToolWanted) {
+      const withReport = injectFleetviewReport(mergedTools, mergedHandlers, env, config.botName);
+      mergedTools = withReport.tools;
+      mergedHandlers = withReport.handlers;
+    }
 
     // ---- Fleet relay Gate 2: authority downgrade --------------------------
     // When this turn was triggered by ANOTHER BOT rather than a person, the
