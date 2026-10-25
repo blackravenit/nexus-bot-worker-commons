@@ -23,6 +23,8 @@ export const SPOKEN_TOOL_BUDGET = 2;
 
 /** Memory recall time budget for a spoken turn, in milliseconds. */
 export const SPOKEN_RECALL_BUDGET_MS = 400;
+// Typed FleetView turns: two sequential memory-worker hops fit comfortably.
+export const FLEETVIEW_RECALL_BUDGET_MS = 4000;
 
 /** System addendum appended to the session context on a spoken turn. */
 export const SPOKEN_ADDENDUM =

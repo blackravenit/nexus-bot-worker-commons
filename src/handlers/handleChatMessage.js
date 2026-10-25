@@ -57,7 +57,7 @@ import { isFleetViewSource, deliverFleetViewReply } from "../lib/fleetviewDelive
 import { injectFleetviewReport, shouldInjectFleetviewReport, FLEETVIEW_REPORT_PROMPT } from "../lib/fleetviewReport.js";
 import {
   isSpokenRequest, pickTurnModel, pickMaxTokens, raceRecallBudget, laneTimings,
-  SPOKEN_ADDENDUM, SPOKEN_TOOL_BUDGET, SPOKEN_RECALL_BUDGET_MS,
+  SPOKEN_ADDENDUM, SPOKEN_TOOL_BUDGET, SPOKEN_RECALL_BUDGET_MS, FLEETVIEW_RECALL_BUDGET_MS,
 } from "../lib/spokenLane.js";
 
 // Detect GIF-only messages so bots receive "[GIF image: <url>]" instead of
@@ -912,16 +912,19 @@ export async function runLlmPipeline({
         // Recall is two sequential memory-worker hops (entity, then a Vectorize
         // search). On a spoken turn that is a long time to stand there saying
         // nothing, so FleetView bounds it: answer with what we know rather than
-        // wait indefinitely to know more. Nexus turns wait as long as it takes.
+        // wait indefinitely to know more. A typed FleetView turn runs inside the
+        // LlmRoom DO with no response deadline, so it gets a budget wide enough
+        // for both hops (the old 900 ms skipped recall on nearly every turn).
+        // Nexus turns wait as long as it takes.
         memoryRecallBlock = spoken
           ? await raceRecallBudget(recall(), SPOKEN_RECALL_BUDGET_MS)
           : fleetView
           ? await Promise.race([
             recall(),
             new Promise((resolve) => setTimeout(() => {
-              console.warn("[handleChatMessage] memory recall too slow for a spoken turn, answering without it");
+              console.warn("[handleChatMessage] memory recall too slow for a typed FleetView turn, answering without it");
               resolve("");
-            }, Number(env.FLEETVIEW_RECALL_BUDGET_MS) || 900)),
+            }, Number(env.FLEETVIEW_RECALL_BUDGET_MS) || FLEETVIEW_RECALL_BUDGET_MS)),
           ])
           : await recall();
       } catch (err) {
