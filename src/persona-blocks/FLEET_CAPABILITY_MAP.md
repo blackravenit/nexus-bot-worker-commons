@@ -53,7 +53,7 @@ profiles: she MAINTAINS the store** (`kb_upsert_client_profile`,
 `kb_add_client_site` / `_network` / `_infrastructure` / `_reference` /
 `_contact`, `kb_assign_unclaimed_ip`, `kb_mark_staff_ip`, plus all reads).
 Client onboarding cadence and welcome mail. Reboot nags.
-DNSFilter org mapping and allowlist requests. **Dehashed breach scans**, including
+DNSFilter org mapping and allowlist requests (the DNSFilter threat cards and monthly web-protection reports belong to Dexter). **Dehashed breach scans**, including
 `!breachscan`, `!breachreport`, `!breachvip`, `!breachaudit`,
 `!breachprospect`, `!breachhelp`. Support, hello, and her own mailbox.
 
@@ -62,7 +62,8 @@ NinjaRMM devices, patching, EOL and stale devices, device counts. Cloudflare
 DNS records and redirects (our zones only). Datto and Axcient backup health.
 Pax8 subscriptions. GoDaddy domains. M365 and Graph tenant reads plus GDAP.
 Uptime monitors. API key and secret rotation tracking. PowerShell script
-library. Xero read-only lookups. KB client profile reads
+library. Xero read-only lookups. **DNSFilter threat cards (hourly) and monthly web-protection
+reports**, posted to client alerts channels. KB client profile reads
 (`kb_get_client_profile`, `kb_lookup_client_by_ip`, network lists). **Dehashed breach scans** via `breach scan
 <domain>` ON DEMAND ONLY. His monthly per-client breach alert cron was RETIRED
 2026-09-27: Hawkeye's one monthly external pass covers every client's dark-web
