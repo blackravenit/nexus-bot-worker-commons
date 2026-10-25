@@ -39,6 +39,7 @@
 
 import { extractOfficeText, isOfficeMime } from "./officeText.js";
 import { isExoticImageMime, transcodeToJpeg } from "./imageTranscode.js";
+import { buildInlineImageBlock, isInlineAttachment } from "./inlineAttachments.js";
 
 const PER_FILE_MAX_BYTES = 10 * 1024 * 1024;
 const TOTAL_SOFT_BYTES = 3 * 1024 * 1024;
@@ -264,7 +265,7 @@ export async function buildBlock(env, mime, buf, filename) {
  *   Override the env var name carrying the Nexus base URL.
  * @returns {Promise<{ blocks: Array<object>, warnings: string[] }>}
  */
-export async function buildAttachmentContentBlocks(env, attachments, options = {}) {
+async function buildUrlAttachmentBlocks(env, attachments, options = {}) {
   if (!Array.isArray(attachments) || attachments.length === 0) {
     return { blocks: [], warnings: [] };
   }
@@ -313,4 +314,30 @@ export async function buildAttachmentContentBlocks(env, attachments, options = {
   }
 
   return { blocks, warnings };
+}
+
+/**
+ * Public entry. Inline attachments ({ name, content_type, data_base64 }, sent
+ * by FleetView) are decoded in place and need no Nexus credentials; every
+ * other attachment goes through the URL fetch path unchanged.
+ *
+ * @param {object} env
+ * @param {Array<object>} attachments
+ * @param {object} [options] - same as the URL path (tokenEnvVar, baseUrlEnvVar)
+ * @returns {Promise<{ blocks: Array<object>, warnings: string[] }>}
+ */
+export async function buildAttachmentContentBlocks(env, attachments, options = {}) {
+  if (!Array.isArray(attachments) || attachments.length === 0) {
+    return { blocks: [], warnings: [] };
+  }
+  const blocks = [];
+  const warnings = [];
+  for (const att of attachments.filter(isInlineAttachment)) {
+    const built = buildInlineImageBlock(att);
+    if (built) blocks.push(built.block);
+    else warnings.push(`Could not read ${att.name || "an inline image"} (type ${att.content_type || "?"}).`);
+  }
+  const remote = attachments.filter((att) => !isInlineAttachment(att));
+  const fromUrls = await buildUrlAttachmentBlocks(env, remote, options);
+  return { blocks: [...blocks, ...fromUrls.blocks], warnings: [...warnings, ...fromUrls.warnings] };
 }

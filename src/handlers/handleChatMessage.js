@@ -849,7 +849,7 @@ export async function runLlmPipeline({
     if (mediaBlocks.length > 0) {
       const blockTextSummary =
         Array.isArray(attachments) && attachments.length
-          ? attachments.map((a) => `${a.filename || a.id} [id=${a.id}] (${a.mime_type || "unknown"})`).join(", ")
+          ? attachments.map((a) => (a.data_base64 ? `${a.name || "pasted image"} (${a.content_type || "image"}, inline)` : `${a.filename || a.id} [id=${a.id}] (${a.mime_type || "unknown"})`)).join(", ")
           : "";
       const historyImageNote = usedHistoryImage
         ? `
