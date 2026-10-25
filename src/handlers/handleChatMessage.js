@@ -116,18 +116,16 @@ async function dispatchLlmJob(env, historyKey, job, config) {
   const bindingName = config.llmRoomBinding || "LLM_ROOM";
   const ns = env[bindingName];
 
-  // FleetView skips the Durable Object and runs inline.
+  // Only a SPOKEN FleetView turn skips the Durable Object and runs inline.
   //
   // The DO exists to escape the ~30s waitUntil ceiling for long tool loops, and
-  // it pays for that with an alarm hop: measured at roughly a second of pure
-  // queue wait before the pipeline starts. On a chat message nobody notices. On
-  // a spoken question it is a second of silence at the front of every answer.
-  //
-  // The trade is real: a FleetView turn that runs past the waitUntil ceiling is
-  // cut off. Spoken questions are short by nature, and a turn that dies still
-  // surfaces as a stall in the FleetView panel rather than vanishing, so the
-  // second is worth more than the tail risk here.
-  if (isFleetViewSource(job.source)) {
+  // it pays for that with an alarm hop: roughly a second of queue wait before
+  // the pipeline starts, which is a second of silence on a spoken answer.
+  // Spoken questions are short, so they take the inline path. A typed FleetView
+  // turn (a report, a research ask) routinely runs past 30 s and was being cut
+  // off with no reply at all (Jacob 2026-10-24: report filed, reply cancelled),
+  // so it goes through the DO like a Nexus turn.
+  if (isFleetViewSource(job.source) && job.spoken && ns && typeof ns.idFromName === "function") {
     try {
       await withProvenance(job.provenance || "mention-reply", () =>
         runLlmPipeline({ env, ...job, config })
