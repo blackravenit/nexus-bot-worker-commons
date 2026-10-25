@@ -105,3 +105,30 @@ export async function raceRecallBudget(recallPromise, budgetMs, fallback = "") {
 export function laneTimings(spoken, modelId) {
   return { lane: spoken ? "spoken" : "normal", model_id: modelId };
 }
+
+const RECALL_TIMEOUT = Symbol("recall-timeout");
+
+/**
+ * Race a typed FleetView recall against its budget and log only what actually
+ * happened. The earlier inline timer warned once the budget elapsed even when
+ * recall had already won, which made every typed turn look recall-less.
+ * @param {() => Promise<string>} recall
+ * @param {number} budgetMs
+ * @returns {Promise<string>} the recall block, or "" when the budget won
+ */
+export async function raceTypedRecall(recall, budgetMs) {
+  const startedAt = Date.now();
+  let timer;
+  const expiry = new Promise((resolve) => { timer = setTimeout(() => resolve(RECALL_TIMEOUT), budgetMs); });
+  try {
+    const block = await Promise.race([recall(), expiry]);
+    if (block === RECALL_TIMEOUT) {
+      console.warn(`[handleChatMessage] memory recall over ${budgetMs}ms on a typed FleetView turn, answering without it`);
+      return "";
+    }
+    console.info(`[handleChatMessage] memory recall ready in ${Date.now() - startedAt}ms (${(block || "").length} chars)`);
+    return block || "";
+  } finally {
+    clearTimeout(timer);
+  }
+}

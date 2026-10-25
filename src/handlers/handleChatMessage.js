@@ -57,7 +57,7 @@ import { isFleetViewSource, deliverFleetViewReply } from "../lib/fleetviewDelive
 import { injectFleetviewReport, shouldInjectFleetviewReport, FLEETVIEW_REPORT_PROMPT } from "../lib/fleetviewReport.js";
 import {
   isSpokenRequest, pickTurnModel, pickMaxTokens, raceRecallBudget, laneTimings,
-  SPOKEN_ADDENDUM, SPOKEN_TOOL_BUDGET, SPOKEN_RECALL_BUDGET_MS, FLEETVIEW_RECALL_BUDGET_MS,
+  SPOKEN_ADDENDUM, SPOKEN_TOOL_BUDGET, SPOKEN_RECALL_BUDGET_MS, FLEETVIEW_RECALL_BUDGET_MS, raceTypedRecall,
 } from "../lib/spokenLane.js";
 
 // Detect GIF-only messages so bots receive "[GIF image: <url>]" instead of
@@ -919,13 +919,7 @@ export async function runLlmPipeline({
         memoryRecallBlock = spoken
           ? await raceRecallBudget(recall(), SPOKEN_RECALL_BUDGET_MS)
           : fleetView
-          ? await Promise.race([
-            recall(),
-            new Promise((resolve) => setTimeout(() => {
-              console.warn("[handleChatMessage] memory recall too slow for a typed FleetView turn, answering without it");
-              resolve("");
-            }, Number(env.FLEETVIEW_RECALL_BUDGET_MS) || FLEETVIEW_RECALL_BUDGET_MS)),
-          ])
+          ? await raceTypedRecall(recall, Number(env.FLEETVIEW_RECALL_BUDGET_MS) || FLEETVIEW_RECALL_BUDGET_MS)
           : await recall();
       } catch (err) {
         console.warn("[handleChatMessage] memory recall failed:", err?.message);
