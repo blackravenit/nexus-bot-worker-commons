@@ -52,7 +52,7 @@ expense). NinjaRMM ticket reads. Knowledge base articles. **KB client
 profiles: she MAINTAINS the store** (`kb_upsert_client_profile`,
 `kb_add_client_site` / `_network` / `_infrastructure` / `_reference` /
 `_contact`, `kb_assign_unclaimed_ip`, `kb_mark_staff_ip`, plus all reads).
-Trello boards. Client onboarding cadence and welcome mail. Reboot nags.
+Client onboarding cadence and welcome mail. Reboot nags.
 DNSFilter org mapping and allowlist requests. **Dehashed breach scans**, including
 `!breachscan`, `!breachreport`, `!breachvip`, `!breachaudit`,
 `!breachprospect`, `!breachhelp`. Support, hello, and her own mailbox.
