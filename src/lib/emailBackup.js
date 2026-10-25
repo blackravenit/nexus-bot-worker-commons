@@ -65,6 +65,25 @@ function _isDuplicate(key) {
   return false;
 }
 
+// A send can fail two ways, and they need different humans doing different
+// things. Transport is an OUTAGE: the message was good, the mail system is
+// down or refusing, and a person can send it by hand. Configuration is a
+// PERMISSION or identity problem: that mailbox was never going to send,
+// re-sending by hand fails the same way, and only a config change fixes it.
+// Paging a channel for the second kind trains everyone to ignore the first.
+const CONFIG_FAILURE_RE = new RegExp(["(^|[^0-9])(401|403)([^0-9]|$)", "ErrorAccessDenied", "RAOP", "AccessPolicy", "invalid_client", "unauthorized_client", "InvalidAuthenticationToken", "AADSTS", "MailboxNotEnabledForRESTAPI", "Access to OData is disabled", "insufficient privileges", "Authorization_RequestDenied"].join("|"), "i");
+
+/**
+ * Whether this failure is a configuration or permission problem rather than an
+ * outage. A configuration failure is reported without paging the channel.
+ *
+ * @param {string} reason - the error text from the failed send
+ * @returns {boolean}
+ */
+export function isConfigFailure(reason) {
+  return CONFIG_FAILURE_RE.test(String(reason || ""));
+}
+
 /**
  * Notify a bot's home channel that an outbound email failed to send. Use this
  * in the catch path of a worker's email-send wrapper, right before rethrowing
@@ -99,8 +118,14 @@ export async function notifyEmailDown(env, { bot, to, subject, reason, context, 
     const dedupKey = `${slug}:${String(reason || "").slice(0, 80)}`;
     if (_isDuplicate(dedupKey)) return false;
 
+    // A config failure gets no @channel: nobody can hand-send their way out of
+    // a permission error, and the siren belongs to real outages.
+    const config = isConfigFailure(reason);
+    const headline = config
+      ? "EMAIL SEND BLOCKED -- that mailbox is not permitted to send, so this is a configuration fix, not a dropped message. Sending it by hand will fail the same way."
+      : `@channel EMAIL SEND FAILED -- the mail system rejected an outbound message, so I'm flagging it here so someone can follow up manually.`;
     const body = [
-      `@channel EMAIL SEND FAILED -- the mail system rejected an outbound message, so I'm flagging it here so someone can follow up manually.`,
+      headline,
       ``,
       to ? `Intended recipient: ${to}` : null,
       subject ? `Subject: ${subject}` : null,
