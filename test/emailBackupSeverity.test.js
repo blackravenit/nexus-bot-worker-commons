@@ -1,44 +1,57 @@
 // A permission error is not an outage. On 2026-10-24 a test send from a mailbox
 // the tenant's AppOnly AccessPolicy does not cover failed with a 403, and every
 // human in #wren-assistant got an @channel ping telling them to "follow up
-// manually" on a message that no human could ever have sent by hand. The siren
-// belongs to real outages; a config failure gets a quiet, accurate line.
+// manually" on a message no human could ever have sent by hand.
+//
+// The first version of this classifier searched the whole error string, which
+// quotes our own subject and recipient list back at us. That let anyone who
+// could get "403" or "AccessPolicy" into a subject line downgrade a REAL outage
+// to a quiet note. It now reads structured facts, and anything ambiguous pages.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isConfigFailure } from "../src/lib/emailBackup.js";
 
-const RAOP = 'Graph MIME draft POST 403: {"error":{"code":"ErrorAccessDenied","message":"Access to OData is disabled: [RAOP] : Blocked by tenant configured AppOnly AccessPolicy settings."}}';
+const RAOP_BODY = 'Graph MIME draft POST 403: {"error":{"code":"ErrorAccessDenied","message":"Access to OData is disabled: [RAOP] : Blocked by tenant configured AppOnly AccessPolicy settings."}}';
 
-test("the access-policy 403 that started this is a configuration failure", () => {
-  assert.equal(isConfigFailure(RAOP), true);
+test("the status decides, and 403 is a configuration failure", () => {
+  assert.equal(isConfigFailure(RAOP_BODY, { status: 403, errorCode: "ErrorAccessDenied" }), true);
+  assert.equal(isConfigFailure("whatever", { status: 401 }), true);
 });
 
-test("every other way a token or grant can be wrong counts too", () => {
-  for (const reason of [
-    "AADSTS7000215: Invalid client secret provided",
-    "invalid_client",
-    "401 Unauthorized",
-    "InvalidAuthenticationToken: Access token has expired",
-    "MailboxNotEnabledForRESTAPI",
-    "Authorization_RequestDenied: Insufficient privileges to complete the operation",
-  ]) {
-    assert.equal(isConfigFailure(reason), true, reason);
-  }
+test("a transport status pages even when the body talks about access policies", () => {
+  assert.equal(isConfigFailure(RAOP_BODY, { status: 503 }), false);
+  assert.equal(isConfigFailure("Graph sendMail 500", { status: 500 }), false);
 });
 
-test("a real outage still pages the channel", () => {
+test("a known provider code is enough on its own, compared exactly", () => {
+  assert.equal(isConfigFailure("", { errorCode: "InvalidAuthenticationToken" }), true);
+  assert.equal(isConfigFailure("", { errorCode: "  erroraccessdenied " }), true);
+  assert.equal(isConfigFailure("", { errorCode: "ErrorAccessDeniedPlease" }), false);
+  assert.equal(isConfigFailure("", { errorCode: "ErrorMailboxStoreUnavailable" }), false);
+});
+
+test("with no facts at all it reads only the error-code field", () => {
+  assert.equal(isConfigFailure(RAOP_BODY), true);
+  assert.equal(isConfigFailure('{"error":{"code":"ErrorMailboxStoreUnavailable"}}'), false);
+  assert.equal(isConfigFailure("Graph sendMail 503: Service Unavailable"), false);
+});
+
+test("a hostile subject or recipient cannot silence the siren", () => {
+  // Every one of these is attacker-reachable text quoted back inside a REAL
+  // outage message. None of them may suppress the page.
   for (const reason of [
-    "Graph sendMail 503: Service Unavailable",
-    "fetch failed: network timeout after 20000ms",
-    "Graph 429 too many requests",
-    "ErrorMailboxStoreUnavailable",
-    "500 internal server error",
+    'Graph MIME send POST 503: {"error":{"code":"ErrorMailboxStoreUnavailable","message":"To: accesspolicy@evil.com"}}',
+    'Graph MIME send POST 500: subject was "RE: invoice 403 ErrorAccessDenied RAOP"',
+    "Graph sendMail failed for invalid_client@partner.example: 502 Bad Gateway",
+    'Graph 504: {"error":{"message":"AADSTS mentioned by the sender"}}',
   ]) {
     assert.equal(isConfigFailure(reason), false, reason);
+    assert.equal(isConfigFailure(reason, { status: 503 }), false, reason);
   }
 });
 
-test("an empty or missing reason is treated as an outage, not silenced", () => {
+test("an empty or missing reason pages rather than going quiet", () => {
   assert.equal(isConfigFailure(""), false);
   assert.equal(isConfigFailure(undefined), false);
+  assert.equal(isConfigFailure(undefined, {}), false);
 });

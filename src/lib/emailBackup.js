@@ -71,19 +71,46 @@ function _isDuplicate(key) {
 // PERMISSION or identity problem: that mailbox was never going to send,
 // re-sending by hand fails the same way, and only a config change fixes it.
 // Paging a channel for the second kind trains everyone to ignore the first.
-const CONFIG_FAILURE_RE = new RegExp(["(^|[^0-9])(401|403)([^0-9]|$)", "ErrorAccessDenied", "RAOP", "AccessPolicy", "invalid_client", "unauthorized_client", "InvalidAuthenticationToken", "AADSTS", "MailboxNotEnabledForRESTAPI", "Access to OData is disabled", "insufficient privileges", "Authorization_RequestDenied"].join("|"), "i");
+//
+// CLASSIFY ON STRUCTURED FACTS, NEVER BY SEARCHING THE ERROR TEXT. That text
+// carries remote content: a Graph failure quotes our own subject and recipient
+// list back at us, so anyone who gets "403" or "AccessPolicy" into a subject
+// or an address could downgrade a REAL outage to a quiet line and nobody would
+// be paged. Status and error code are tagged onto the thrown error by
+// mimeEmail.js. Anything ambiguous PAGES: a false siren costs attention, a
+// missed one costs the message.
+const CONFIG_ERROR_CODES = new Set([
+  "erroraccessdenied",
+  "accessdenied",
+  "invalidauthenticationtoken",
+  "mailboxnotenabledforrestapi",
+  "authorization_requestdenied",
+  "invalid_client",
+  "unauthorized_client",
+  "invalid_grant",
+  "forbidden",
+]);
+
+// Reads ONE field out of a provider body, the error code. Nothing else in the
+// string is ever examined.
+const ERROR_CODE_RE = new RegExp("\"code\"[ ]*:[ ]*\"([A-Za-z_]{1,60})\"");
 
 /**
  * Whether this failure is a configuration or permission problem rather than an
  * outage. A configuration failure is reported without paging the channel.
  *
- * @param {string} reason - the error text from the failed send
- * @returns {boolean}
+ * @param {string} reason - error text; only its error-code field is read
+ * @param {object} [facts]
+ * @param {number} [facts.status] - HTTP status from the failed call
+ * @param {string} [facts.errorCode] - provider error code, compared exactly
+ * @returns {boolean} true only when something authoritative says permission
  */
-export function isConfigFailure(reason) {
-  return CONFIG_FAILURE_RE.test(String(reason || ""));
+export function isConfigFailure(reason, { status, errorCode } = {}) {
+  if (typeof errorCode === "string" && CONFIG_ERROR_CODES.has(errorCode.trim().toLowerCase())) return true;
+  if (Number.isFinite(status)) return status === 401 || status === 403;
+  const match = ERROR_CODE_RE.exec(String(reason || ""));
+  return match ? CONFIG_ERROR_CODES.has(match[1].toLowerCase()) : false;
 }
-
 /**
  * Notify a bot's home channel that an outbound email failed to send. Use this
  * in the catch path of a worker's email-send wrapper, right before rethrowing
@@ -97,10 +124,12 @@ export function isConfigFailure(reason) {
  * @param {string} [args.to] - intended recipient address, for the card
  * @param {string} [args.subject] - intended subject, for the card
  * @param {string} [args.reason] - error message / why the send failed
+ * @param {number} [args.status] - HTTP status of the failed call, when known
+ * @param {string} [args.errorCode] - provider error code, when known
  * @param {string} [args.context] - optional extra context (job name, prospect)
  * @returns {Promise<boolean>} true if a ping was posted, false if skipped
  */
-export async function notifyEmailDown(env, { bot, to, subject, reason, context, channelSlug } = {}) {
+export async function notifyEmailDown(env, { bot, to, subject, reason, context, channelSlug, status, errorCode } = {}) {
   try {
     const entry = BOT_HOME_CHANNELS[String(bot || "").toLowerCase()];
     if (!entry) {
@@ -120,7 +149,7 @@ export async function notifyEmailDown(env, { bot, to, subject, reason, context, 
 
     // A config failure gets no @channel: nobody can hand-send their way out of
     // a permission error, and the siren belongs to real outages.
-    const config = isConfigFailure(reason);
+    const config = isConfigFailure(reason, { status, errorCode });
     const headline = config
       ? "EMAIL SEND BLOCKED -- that mailbox is not permitted to send, so this is a configuration fix, not a dropped message. Sending it by hand will fail the same way."
       : `@channel EMAIL SEND FAILED -- the mail system rejected an outbound message, so I'm flagging it here so someone can follow up manually.`;

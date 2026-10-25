@@ -259,6 +259,29 @@ function quotedPrintableEncode(s) {
 }
 
 /**
+ * Tag a Graph failure with the facts a caller needs to classify it, so nobody
+ * has to pattern-match the message text (which carries remote content and can
+ * be steered by whatever is in the subject or the recipient list).
+ *
+ * @param {string} message - human-readable error line
+ * @param {number} status - HTTP status from Graph
+ * @param {string} bodyText - raw response body, parsed best-effort for error.code
+ * @returns {Error}
+ */
+function graphError(message, status, bodyText) {
+  const err = new Error(message);
+  err.status = status;
+  try {
+    const parsed = JSON.parse(bodyText);
+    const code = parsed?.error?.code;
+    if (typeof code === "string") err.graphCode = code;
+  } catch {
+    // Non-JSON body: status alone carries the classification.
+  }
+  return err;
+}
+
+/**
  * Send a MIME message via Graph's MIME upload path.
  *
  * Two-step process:
@@ -291,7 +314,7 @@ export async function sendMimeEmail(token, mailbox, mimeString, opts = {}) {
 
   if (!draftRes.ok) {
     const text = await draftRes.text();
-    throw new Error(`Graph MIME draft POST ${draftRes.status}: ${text.slice(0, 500)}`);
+    throw graphError(`Graph MIME draft POST ${draftRes.status}: ${text.slice(0, 500)}`, draftRes.status, text);
   }
 
   const draft = await draftRes.json();
@@ -310,7 +333,7 @@ export async function sendMimeEmail(token, mailbox, mimeString, opts = {}) {
 
   if (!sendRes.ok && sendRes.status !== 202) {
     const text = await sendRes.text();
-    throw new Error(`Graph MIME send POST ${sendRes.status}: ${text.slice(0, 500)}`);
+    throw graphError(`Graph MIME send POST ${sendRes.status}: ${text.slice(0, 500)}`, sendRes.status, text);
   }
 
   return { messageId: draftId };
