@@ -193,8 +193,8 @@ async function postSignedReply(env, replyWebhook, payload) {
 async function mirrorToHomeChannel(env, homeChannelSlug, answer, nexusOptions, askedBy, question) {
   if (!homeChannelSlug) return false;
   const header = question
-    ? `${askedBy || "Brian"} asked from FleetView: ${String(question).slice(0, 300)}\n\n`
-    : `Asked by ${askedBy || "Brian"} from FleetView.\n\n`;
+    ? `${askedBy || "Brian"} asked from Raven Bots: ${String(question).slice(0, 300)}\n\n`
+    : `Asked by ${askedBy || "Brian"} from Raven Bots.\n\n`;
   try {
     const parts = chunkBangReport(header + answer);
     for (const part of parts) {
