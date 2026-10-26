@@ -1,6 +1,17 @@
 /**
  * @file aiEgress.js
- * Pins outbound AI API calls to Eastern North America.
+ * Pins outbound calls to Eastern North America, for any caller whose egress
+ * LOCATION matters. Named for its first use (AI), since the binding name
+ * `AI_EGRESS` is now live in several repos and renaming it would be churn.
+ *
+ * Second use, 2026-10-25: outbound MAIL. Microsoft restricted
+ * ava.raven@getblackraven.com for "sending from multiple countries" (Desk
+ * 11372) because every cold send left from whatever colo the cron tick landed
+ * in. Mail has a STRICTER requirement than AI: Anthropic only needs "not Hong
+ * Kong", while Microsoft is measuring whether the country VARIES. So mail
+ * passes `jurisdiction: "us"`, which is a hard constraint, where AI relies on
+ * `locationHint`, which Cloudflare documents as best effort and honours only at
+ * object creation.
  *
  * A Worker invoked by a Cron Trigger has no client to be near, so Cloudflare
  * runs the tick wherever it has capacity. Measured 2026-10-22 across 600 fleet
@@ -100,26 +111,42 @@ export class AiEgressBase {
  * @param {object} env
  * @returns {string}
  */
-function shardName(env) {
+function shardName(env, pool) {
   const bot = env.AI_GATEWAY_BOT || env.WORKER_NAME || "fleet";
   const count = Number(env.AI_EGRESS_SHARDS) > 0 ? Number(env.AI_EGRESS_SHARDS) : DEFAULT_SHARDS;
-  return `${bot}-${EGRESS_HINT}-${Math.floor(Math.random() * count)}`;
+  // No pool keeps the original name, so existing AI objects keep their identity
+  // and their placement. A pool gives mail its own objects rather than queueing
+  // a send behind a 2-minute model call on the same object.
+  const prefix = pool ? `${bot}-${pool}` : bot;
+  return `${prefix}-${EGRESS_HINT}-${Math.floor(Math.random() * count)}`;
 }
 
 /**
- * Drop-in replacement for `fetch` on calls to an AI provider.
+ * Drop-in replacement for `fetch` on a call whose egress location matters.
  *
  * @param {object} env - Worker env, optionally carrying an AI_EGRESS binding
  * @param {string} url - Absolute target URL
  * @param {RequestInit} [init] - Standard fetch init
+ * @param {{jurisdiction?: "us"|"eu"|"fedramp", pool?: string}} [opts]
+ *   `jurisdiction` constrains the object to that region's datacentres. Unlike
+ *   `locationHint` this is a HARD guarantee, so pass it when the country must
+ *   not vary. `pool` gives this traffic its own objects.
  * @returns {Promise<Response>}
  */
-export async function egressFetch(env, url, init = {}) {
+export async function egressFetch(env, url, init = {}, opts = {}) {
   const ns = env && env.AI_EGRESS;
   if (!ns) return fetch(url, init);
 
   try {
-    const stub = ns.get(ns.idFromName(shardName(env)), { locationHint: EGRESS_HINT });
+    // A jurisdictional namespace yields DIFFERENT ids for the same name, so this
+    // never collides with the plain objects above. Guarded because a test double
+    // or an older runtime may not implement jurisdiction().
+    const scoped =
+      opts.jurisdiction && typeof ns.jurisdiction === "function"
+        ? ns.jurisdiction(opts.jurisdiction)
+        : ns;
+    const name = shardName(env, opts.pool);
+    const stub = scoped.get(scoped.idFromName(name), { locationHint: EGRESS_HINT });
     return await stub.fetch(url, init);
   } catch (err) {
     console.warn(`[aiEgress] object unreachable, falling back to direct fetch: ${err.message}`);

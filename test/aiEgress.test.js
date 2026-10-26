@@ -180,3 +180,80 @@ test("AiEgressBase returns 502 instead of throwing across the stub boundary", as
   assert.equal(result.status, 502);
   assert.equal((await result.json()).error.type, "egress_failed");
 });
+
+// ---------------------------------------------------------------------------
+// Jurisdiction and pools, added 2026-10-25 for outbound MAIL.
+//
+// Microsoft restricted a sending mailbox for "sending from multiple countries"
+// because every cron send left from a different colo (Desk 11372). Mail needs
+// a stronger guarantee than AI did: locationHint is best effort and honoured
+// only at object creation, while jurisdiction is hard. These tests pin the two
+// things a rollout can silently break: that the jurisdiction is actually
+// requested, and that AI callers are byte-for-byte unchanged.
+// ---------------------------------------------------------------------------
+
+// A namespace that also records jurisdiction() calls and returns a distinct
+// sub-namespace, mirroring the real API where a jurisdictional id differs.
+function fakeJurisdictionNamespace(stubFetch) {
+  const seen = { jurisdictions: [], names: [], options: [] };
+  const makeNs = (tag) => ({
+    idFromName(name) {
+      seen.names.push(`${tag}:${name}`);
+      return `id:${tag}:${name}`;
+    },
+    get(_id, options) {
+      seen.options.push(options);
+      return { fetch: async (url, init) => stubFetch(url, init) };
+    },
+    jurisdiction(j) {
+      seen.jurisdictions.push(j);
+      return makeNs(j);
+    },
+  });
+  return { seen, ns: makeNs("plain") };
+}
+
+test("a mail call asks for the us jurisdiction and its own pool", async () => {
+  const { seen, ns } = fakeJurisdictionNamespace(async () => new Response("ok"));
+  const env = { AI_EGRESS: ns, WORKER_NAME: "jacob-worker" };
+
+  await egressFetch(env, "https://graph.microsoft.com/v1.0/x", {}, { jurisdiction: "us", pool: "mail" });
+
+  assert.deepEqual(seen.jurisdictions, ["us"], "the hard constraint must actually be requested");
+  assert.equal(seen.names.length, 1);
+  assert.match(seen.names[0], /^us:jacob-worker-mail-enam-\d$/, "pooled name, built inside the us namespace");
+  assert.deepEqual(seen.options[0], { locationHint: "enam" }, "the hint still rides along inside the jurisdiction");
+});
+
+test("an AI call is unchanged: no jurisdiction, original object name", async () => {
+  const { seen, ns } = fakeJurisdictionNamespace(async () => new Response("ok"));
+  const env = { AI_EGRESS: ns, WORKER_NAME: "jacob-worker" };
+
+  await egressFetch(env, "https://api.anthropic.com/v1/messages", {});
+
+  assert.deepEqual(seen.jurisdictions, [], "AI must not silently move to a jurisdictional object");
+  assert.match(seen.names[0], /^plain:jacob-worker-enam-\d$/, "the pre-existing name, so placement is kept");
+});
+
+test("a runtime without jurisdiction() still sends, unpinned rather than failed", async () => {
+  // Older runtime or a test double. Degrading to the plain object is correct:
+  // a send that leaves from the wrong country beats a send that never goes.
+  const seen = { names: [] };
+  const ns = {
+    idFromName(name) { seen.names.push(name); return `id:${name}`; },
+    get() { return { fetch: async () => new Response("ok") }; },
+  };
+  const res = await egressFetch({ AI_EGRESS: ns, WORKER_NAME: "jacob-worker" }, "https://graph.microsoft.com/x", {}, { jurisdiction: "us", pool: "mail" });
+  assert.equal(res.status, 200);
+  assert.match(seen.names[0], /^jacob-worker-mail-enam-\d$/, "pool still applies without jurisdiction support");
+});
+
+test("with no binding at all a mail call is a plain fetch", async () => {
+  const { result, calls } = await withFetch(
+    async () => new Response("direct"),
+    () => egressFetch({}, "https://graph.microsoft.com/v1.0/x", { method: "POST" }, { jurisdiction: "us", pool: "mail" }),
+  );
+  assert.equal(await result.text(), "direct");
+  assert.equal(calls.length, 1, "exactly one direct call, no object hop");
+  assert.equal(calls[0][1].method, "POST", "init is passed through untouched");
+});
