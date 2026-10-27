@@ -7,8 +7,8 @@ export const modalSubmitFixture = {
   user_id: "69276926-7182-4920-a849-fc6f27dc049b",
   display_name: "Brian",
   values: {
-    subject: "Re: April invoice — updated",
-    body: "Hi, attaching the revised April statement. — Maxwell",
+    subject: "Re: April invoice - updated",
+    body: "Hi, attaching the revised April statement. Maxwell",
   },
   timestamp: 1716740000000,
 };

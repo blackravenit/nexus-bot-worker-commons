@@ -24,7 +24,7 @@ import { join, extname } from "node:path";
 
 const SCAN_EXTENSIONS = new Set([".js", ".mjs", ".md", ".txt"]);
 const SKIP_DIR_NAMES = new Set(["node_modules", ".git", "dist", "build", ".wrangler", ".wrangler-dry", "test", "tests"]);
-const EM_EN_RE = /[–—‒―]/;
+const EM_EN_RE = /[\u2013\u2014\u2012\u2015]/;
 const SPACED_DH_RE = / -{2} /;
 const PROSE_DH_RE = /(?<=[A-Za-z])-{2}(?=[A-Za-z])/;
 const SKIP_MARKER = "dash-ok";

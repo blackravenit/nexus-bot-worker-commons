@@ -975,7 +975,7 @@ export async function runLlmPipeline({
     // block bots drift days behind because they inherit the model's cutoff.
     const today = phoenixToday();
     const NEXUS_TODAY =
-      `\n\nCURRENT DATE AND TIME (authoritative — overrides any internal "today" you might recall):` +
+      `\n\nCURRENT DATE AND TIME (authoritative, overrides any internal "today" you might recall):` +
       `\n- Today is ${today.full} in Arizona (America/Phoenix, UTC-7, no DST).` +
       `\n- Local time right now: ${today.time}.` +
       `\n- ISO date: ${today.iso}. ISO 8601: ${today.iso8601}.` +

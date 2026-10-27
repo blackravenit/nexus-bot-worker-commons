@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/format.js — fleet-wide formatting helpers.
+// lib/format.js: fleet-wide formatting helpers.
 //
 // Pure functions. No I/O, no env reads. Safe under Cloudflare Workers.
 //
@@ -11,7 +11,7 @@
 // and bullet lists identically. Drift is a review-flag.
 //
 // All time/date helpers default to America/Phoenix when a tz option is passed
-// explicitly. They do NOT default to AZ when tz is omitted — that would shift
+// explicitly. They do NOT default to AZ when tz is omitted, that would shift
 // legacy call sites. Callers opt in.
 // =============================================================================
 
@@ -108,7 +108,7 @@ export function fmtRelative(d, opts = {}) {
 /**
  * Emit a Nexus/Discord-style timestamp token the renderer auto-converts to the
  * viewer's local tz. format is one of t/T/d/D/f/F/R. Use ONLY in rich reports
- * (never in title/preview line — push notifications strip markdown and the
+ * (never in title/preview line: push notifications strip markdown and the
  * token shows as ugly literal text).
  */
 export function nexusTimestamp(d, format = "f") {
@@ -122,11 +122,11 @@ export function nexusTimestamp(d, format = "f") {
  * (UTC-7 year-round) so this is rock-solid.
  *
  * Returns:
- *   iso       "2026-05-20"                 — local YYYY-MM-DD
+ *   iso       "2026-05-20"                 local YYYY-MM-DD
  *   weekday   "Wednesday"
  *   full      "Wednesday, May 20, 2026"
  *   time      "2:34 PM AZ"
- *   iso8601   "2026-05-20T14:34:00-07:00"  — wall-clock with AZ offset
+ *   iso8601   "2026-05-20T14:34:00-07:00"  wall-clock with AZ offset
  */
 export function phoenixToday(now = new Date()) {
   return {
@@ -295,7 +295,7 @@ export function fmtList(items, opts = {}) {
 
 /**
  * Aligned key:value rows. Intended for INSIDE a code fence (bangReport).
- * Don't use in rich markdown — alignment goes wrong under proportional fonts.
+ * Don't use in rich markdown: alignment goes wrong under proportional fonts.
  */
 export function fmtKv(rows, opts = {}) {
   const { align = true, sep = ": " } = opts;
@@ -372,7 +372,7 @@ export function joinOxford(items, conj = "and") {
 }
 
 /**
- * Aggressive markdown-to-text. Mirrors nexus-app embedToPreview.js — keep in
+ * Aggressive markdown-to-text. Mirrors nexus-app embedToPreview.js, keep in
  * sync. Used for the 140-char toast/push preview safety check.
  */
 export function stripMarkdown(s) {
@@ -428,7 +428,7 @@ export function linkLabel(url, label) {
 // Closed set. Bots pick semantic keys, not literal emoji. Freelance emoji at
 // a call site is a review-flag.
 //
-// Some keys map to the same glyph on purpose (OK/TASKS both ✅) — semantics
+// Some keys map to the same glyph on purpose (OK/TASKS both ✅), semantics
 // matter for grep + future renaming, not the rendered glyph.
 
 export const PALETTE = Object.freeze({

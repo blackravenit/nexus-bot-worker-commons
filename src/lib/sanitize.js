@@ -24,12 +24,12 @@ const PROTECTED_SEGMENT_RE =
  */
 function scrubDashProse(segment) {
   return segment
-    .replace(/\s*[—―]\s*/g, ", ")
+    .replace(/\s*[\u2014\u2015]\s*/g, ", ")
     .replace(/\s*(?:&mdash;|&#8212;|&#x2014;|&horbar;|&#8213;)\s*/gi, ", ")
     .replace(/ +-{2} +/g, ", ")
     .replace(/(?<=\d)-{2}(?=\d)/g, "-")
     .replace(/(?<=[A-Za-z])-{2}(?=[A-Za-z])/g, ", ")
-    .replace(/[–‒]/g, "-")
+    .replace(/[\u2013\u2012]/g, "-")
     .replace(/(?:&ndash;|&#8211;|&#x2013;)/gi, "-")
     .replace(/,\s*,/g, ",");
 }
@@ -184,7 +184,7 @@ export function detectBareCapsHeader(text) {
  */
 export function detectEmDashLeak(text) {
   if (typeof text !== "string") return false;
-  if (/[–—‒―]/.test(text)) return true;
+  if (/[\u2013\u2014\u2012\u2015]/.test(text)) return true;
   const parts = text.split(PROTECTED_SEGMENT_RE);
   for (let i = 0; i < parts.length; i += 2) {
     if (/ -{2} /.test(parts[i])) return true;

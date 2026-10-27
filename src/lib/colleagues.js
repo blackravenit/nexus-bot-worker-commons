@@ -186,7 +186,7 @@ export async function weaveColleagueMention(env, post, opts = {}) {
       return original;
     }
   }
-  if (/[–—]|--/.test(tagged)) {
+  if (/[\u2013\u2014]|--/.test(tagged)) {
     console.warn("[colleagues] weave introduced dash punctuation, posting untagged");
     return original;
   }

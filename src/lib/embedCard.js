@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/embedCard.js — bangReport / bangAlert helpers for Nexus bot output.
+// lib/embedCard.js: bangReport / bangAlert helpers for Nexus bot output.
 //
 // 2026-05-17 fleet-wide format reset:
 //
@@ -135,7 +135,7 @@ export function chunkBangReport(report, opts = {}) {
 }
 
 /**
- * bangAlert — non-command variant of bangReport for cron jobs, pollers, and
+ * bangAlert: non-command variant of bangReport for cron jobs, pollers, and
  * webhook handlers. Same output shape as bangReport (code-block-wrapped,
  * 72-wide rules, sections) but the title line is "Botname verb" (no leading
  * `!`), since the post isn't the response to a chat command.
@@ -164,14 +164,14 @@ export function bangAlert({ botName, verb, args, sections } = {}) {
 }
 
 // =============================================================================
-// buildReport — rich markdown card for human-facing reports.
+// buildReport: rich markdown card for human-facing reports.
 //
 // Hybrid format reset (2026-05-20): bangReport stays for diagnostics / monospace
 // output (errors, JSON dumps, monitor lines, command echoes). buildReport is the
 // new path for human-facing briefings, digests, recaps, HITL approvals, and
 // anything a person will skim. See persona-blocks/FLEET_OUTPUT_STYLE.md.
 //
-// Output is pure markdown — no surrounding code fence. The Nexus renderer
+// Output is pure markdown, no surrounding code fence. The Nexus renderer
 // (MessageBody.jsx → marked.js + DOMPurify) handles GFM, custom emoji, mention
 // chips, channel chips, and Discord-style <t:UNIX:X> timestamp tokens.
 //

@@ -16,7 +16,7 @@
 //   Duplicate (bot, op, msg) combinations are silenced after the first
 //   10 firings within a 5-minute window. The counter lives in an
 //   in-memory Map on the module scope. Worker isolates are short-lived;
-//   this is intentionally lightweight — the goal is burst suppression,
+//   this is intentionally lightweight: the goal is burst suppression,
 //   not cross-isolate coordination.
 //
 // Safety:
@@ -117,7 +117,7 @@ export async function reportFleetError(env, { bot, op, msg, ctx } = {}, options 
 
     await postToNexus(env, FLEET_ERRORS_SLUG, body, { provenance: "system-alert", ...options });
   } catch (err) {
-    // Swallow unconditionally — this is the error reporter itself.
+    // Swallow unconditionally: this is the error reporter itself.
     console.error("[fleetError] reportFleetError itself failed:", err?.message);
   }
 }

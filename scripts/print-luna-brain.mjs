@@ -30,7 +30,7 @@ const brain = buildLunaBrain({ surface, handoff: surface === "website" });
 const REFUSALS = [
   [/morphora/i, "another company is named"],
   [/\bYelm\b/i, "the founder's surname is present"],
-  [/[—–―]/, "em or en dash punctuation"],
+  [/[\u2014\u2013\u2015]/, "em or en dash punctuation"],
 ];
 
 const whole = [brain.systemPrompt, brain.context, brain.greeting].join("\n");

@@ -128,7 +128,7 @@ export function makeLeaveCommand(botName, nexusKeyEnvVar) {
     const { user_id, env, reply } = ctx;
     // Pass requester_user_id without channel_slug so the nexus-app worker
     // resolves the invoker's current channel server-side. Same pattern as
-    // makeJoinCommand — avoids the 401 from the cookie-gated rosters endpoint.
+    // makeJoinCommand: avoids the 401 from the cookie-gated rosters endpoint.
     let res;
     try {
       res = await postHmacSigned(
