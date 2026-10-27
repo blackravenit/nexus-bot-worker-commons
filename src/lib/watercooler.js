@@ -68,7 +68,7 @@ function mentionsOtherBot(body, botName) {
  * Detect whether this bot is in an active back-and-forth with a specific
  * user. Window-based: find the bot's most recent post within
  * CONVO_WINDOW_MS, then check whether userId posted at least once between
- * that bot post and now. No adjacency required -- interleaving messages
+ * that bot post and now. No adjacency required, interleaving messages
  * from other people do not break the conversation.
  *
  * Suppression: if the user has named ANY OTHER bot in their messages
@@ -101,7 +101,7 @@ function isActiveConvo(recent, botId, botName, userId, now) {
     if (recent[i].user_id === userId) {
       userPostedSince = true;
       // If the user named a different bot in any post-our-reply message,
-      // they've redirected -- we are no longer in active conversation.
+      // they've redirected, we are no longer in active conversation.
       if (mentionsOtherBot(recent[i].body || "", botName)) return false;
     }
   }
@@ -193,7 +193,7 @@ export async function shouldChimeIn(env, botName, channelSlug, body, nexusOption
 
   // Tier 0: active conversation continuation. Once a human is actively talking
   // WITH this bot, it stays engaged until the human stops or redirects to
-  // another bot -- both already handled above (isActiveConvo returns false the
+  // another bot, both already handled above (isActiveConvo returns false the
   // moment the user names a different bot, and the partner check yields when a
   // different human is the one posting). We deliberately do NOT yield here just
   // because a sibling bot also spoke recently: dropping out of a live

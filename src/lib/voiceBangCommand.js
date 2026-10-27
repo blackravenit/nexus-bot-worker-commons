@@ -8,7 +8,7 @@
 // commons foundation handlers (remember/forget/facts/clear/status/fleet).
 //
 // Before this helper existed, every bot duplicated ~100 lines of nearly
-// identical bangCommand.js code -- including subtle import bugs (jacob
+// identical bangCommand.js code, including subtle import bugs (jacob
 // 2026-05-20) where the commandHandlers map silently fell back to {} on bots
 // whose tools/registry.js shape differed from Dexter's. This factory removes
 // the duplication entirely. Each bot's bangCommand.js becomes ~5 lines that
@@ -17,7 +17,7 @@
 // Foundation commands are merged at handler-call time using the bot's config
 // (the buildFoundationHandlers closure needs env + userId + historyKey +
 // channel_slug + config + nexusOptions). Bot-specific commands win on name
-// collision -- matches the precedence used by commons handleChatMessage.
+// collision, matches the precedence used by commons handleChatMessage.
 //
 // Hard rules:
 //   - ES modules only.
@@ -47,7 +47,7 @@ export function createBangCommandTool({ commandHandlers, commandMeta, botConfig 
   // Merge bot-specific meta with foundation meta for the static tool description.
   // If the bot supplies handlers but no meta (courtney/moxie/maxwell at time of
   // writing), synthesize description-less entries from handler keys so they still
-  // appear in the tool description -- otherwise the LLM can't see them.
+  // appear in the tool description, otherwise the LLM can't see them.
   const botMeta = Array.isArray(commandMeta) ? commandMeta : [];
   const botMetaTriggers = new Set(botMeta.map((m) => m.trigger));
   const handlerKeys = Object.keys(commandHandlers || {});
@@ -117,7 +117,7 @@ export function createBangCommandTool({ commandHandlers, commandMeta, botConfig 
       { nexusKeyEnvVar: botConfig.nexusKeyEnvVar },
     );
 
-    // Bot wins on collision -- matches handleChatMessage precedence.
+    // Bot wins on collision, matches handleChatMessage precedence.
     const allHandlers = { ...foundationHandlers, ...commandHandlers };
     const handler = allHandlers[command];
     if (!handler) {

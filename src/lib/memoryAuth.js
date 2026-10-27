@@ -20,7 +20,7 @@
 
 /**
  * HMAC-SHA256(keyStr, msg) as lowercase hex. The key is used as raw UTF-8
- * bytes of the (hex) key string -- both sides treat it identically, so no
+ * bytes of the (hex) key string, both sides treat it identically, so no
  * hex-decoding mismatch can occur.
  * @param {string} keyStr
  * @param {string} msg

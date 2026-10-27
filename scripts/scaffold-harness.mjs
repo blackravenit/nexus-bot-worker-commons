@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // =============================================================================
-// scaffold-harness.mjs -- one-command, idempotent setup of the Vitest test
+// scaffold-harness.mjs, one-command, idempotent setup of the Vitest test
 // harness in a bot worker repo. Run FROM a bot repo:
 //
 //   node ../nexus-bot-worker-commons/scripts/scaffold-harness.mjs [--dry-run]
@@ -102,7 +102,7 @@ export default defineConfig({
 
 // ---- 3. vitest.workers.config.js (per-bot; skip if hand-tuned) ---------------
 if (existsSync(join(dir, "vitest.workers.config.js"))) {
-  warn("vitest.workers.config.js exists -- leaving it (may be hand-tuned)");
+  warn("vitest.workers.config.js exists, leaving it (may be hand-tuned)");
 } else {
   const stubsLine = serviceStubs.length
     ? `\n      // External service bindings absent in the pool; stubbed so workerd boots.\n      serviceStubs: [${serviceStubs.map((s) => `"${s}"`).join(", ")}],`
@@ -158,7 +158,7 @@ export default defineConfig({
     const names = m[1].split(",").map((s) => s.trim()).filter(Boolean);
     const unsafe = names.filter((n) => !SAFE_NODE_TEST_NAMES.has(n));
     if (unsafe.length) {
-      warn(`${f}: uses node:test { ${unsafe.join(", ")} } not 1:1 in vitest -- MIGRATE BY HAND`);
+      warn(`${f}: uses node:test { ${unsafe.join(", ")} } not 1:1 in vitest, MIGRATE BY HAND`);
       continue;
     }
     write(f, src.replace(/from\s*["']node:test["']/, 'from "vitest"'));
@@ -170,7 +170,7 @@ export default defineConfig({
   const intDir = join(dir, "test/integration");
   const existing = existsSync(intDir) ? readdirSync(intDir).filter((f) => f.endsWith(".test.js")) : [];
   if (existing.length) {
-    warn(`test/integration already has ${existing.length} file(s) -- leaving them`);
+    warn(`test/integration already has ${existing.length} file(s): leaving them`);
   } else {
     write("test/integration/health.test.js", `import { env, SELF } from "cloudflare:test";
 import { it, expect } from "vitest";
@@ -231,7 +231,7 @@ it("base bindings are present in the test env", () => {
 });`);
     if (routes.modalSubmit) blocks.push(`describe("POST /api/internal/modal-submit", () => {
   // HMAC-level guard. A side-effect test (assert \`values\` persists) is
-  // hand-written per bot -- see maxwell-worker/test/integration/modal-submit.test.js.
+  // hand-written per bot, see maxwell-worker/test/integration/modal-submit.test.js.
   it("accepts a correctly-signed submit (authenticated)", async () => {
     const res = await postSigned(SELF, "/api/internal/modal-submit", fixtures["modal-submit"], SECRET);
     expect(res.status).not.toBe(401);
@@ -262,7 +262,7 @@ ${blocks.join("\n\n")}
 {
   const p = "scripts/deploy.mjs";
   if (!existsSync(join(dir, p))) {
-    warn("no scripts/deploy.mjs -- skipping deploy gate (add manually)");
+    warn("no scripts/deploy.mjs, skipping deploy gate (add manually)");
   } else {
     const src = read(p);
     if (src.includes("test:all")) {
@@ -270,24 +270,24 @@ ${blocks.join("\n\n")}
     } else {
       const anchor = src.match(/\n(let cfToken;)/);
       if (!anchor) {
-        warn("could not find the `let cfToken;` anchor in deploy.mjs -- INSERT THE GATE BY HAND (copy maxwell-worker/scripts/deploy.mjs). Aborting gate step.");
+        warn("could not find the `let cfToken;` anchor in deploy.mjs, INSERT THE GATE BY HAND (copy maxwell-worker/scripts/deploy.mjs). Aborting gate step.");
       } else {
         // Uses execSync (imported in every bot's deploy.mjs) so the gate works
         // regardless of whether the script also imports spawnSync.
         const gate = `
 // Pre-deploy gate: run the test harness and refuse to ship on red. Emergency
-// override: \`npm run deploy -- --skip-tests\` (logged).
+// override: \`npm run deploy -- --skip-tests\` (logged). dash-ok
 if (!process.argv.includes('--skip-tests')) {
   try {
     console.log('[deploy] pre-deploy gate: npm run test:all ...');
     execSync('npm run test:all', { stdio: 'inherit' });
     console.log('[deploy] gate passed.');
   } catch {
-    console.error('[deploy] ABORTED -- tests failed. Fix the harness, or override with \`npm run deploy -- --skip-tests\` (logged).');
+    console.error('[deploy] ABORTED: tests failed. Fix the harness, or override with \`npm run deploy -- --skip-tests\` (logged).'); // dash-ok
     process.exit(1);
   }
 } else {
-  console.warn('[deploy] WARNING: --skip-tests set -- deploying WITHOUT the test gate.');
+  console.warn('[deploy] WARNING: --skip-tests set, deploying WITHOUT the test gate.');
 }
 
 `;
@@ -297,4 +297,4 @@ if (!process.argv.includes('--skip-tests')) {
   }
 }
 
-log("done.", DRY ? "(dry-run -- nothing written)" : "Next: hand-write any modal-submit side-effect test, then `npm run test:all`.");
+log("done.", DRY ? "(dry-run, nothing written)" : "Next: hand-write any modal-submit side-effect test, then `npm run test:all`.");

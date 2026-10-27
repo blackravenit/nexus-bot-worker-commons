@@ -1,5 +1,5 @@
 // =============================================================================
-// handlers/handleHitlSettled.js -- read-only GET /api/internal/hitl-settled.
+// handlers/handleHitlSettled.js, read-only GET /api/internal/hitl-settled.
 //
 // Exposes a bot's OWN resolved HITL rows (hitl_pending.resolved_at IS NOT NULL)
 // so the fleet self-healer (nexus-app) can cross-check them against Nexus D1 and

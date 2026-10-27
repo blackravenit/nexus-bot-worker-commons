@@ -1,5 +1,5 @@
 // Canonical valid modal-submit callback payload. Note the `values` key (object
-// map of field name -> submitted value) -- this is the wire contract. A
+// map of field name -> submitted value): this is the wire contract. A
 // payload keyed `fields` is non-conforming.
 export const modalSubmitFixture = {
   message_id: "msg-ghi789",

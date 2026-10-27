@@ -51,7 +51,7 @@ export async function verifyNexusSignature(secret, rawBody, headers, options = {
   const replayWindowSec = options.replayWindowSec ?? 300;
 
   if (!secret) {
-    console.warn("[callbackSign] secret not provided -- rejecting");
+    console.warn("[callbackSign] secret not provided, rejecting");
     return false;
   }
 

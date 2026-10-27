@@ -1,14 +1,14 @@
 // =============================================================================
-// lib/buttonId.js -- fleet-wide button label + id grammar.
+// lib/buttonId.js, fleet-wide button label + id grammar.
 //
 // Two things lived in this file as soon as the fleet had more than one bot:
 //
-// 1. BUTTON_LABELS -- closed set of approved button verbs. Each verb maps
+// 1. BUTTON_LABELS, closed set of approved button verbs. Each verb maps
 //    to {label, style} so every bot's "Approve" button reads the same and
 //    uses the same accent color in Nexus. New verbs require a code change
-//    here, on purpose -- it's the choke point.
+//    here, on purpose, it's the choke point.
 //
-// 2. buttonId(verb, kind, id) / parseButtonId(s) -- canonical grammar for
+// 2. buttonId(verb, kind, id) / parseButtonId(s): canonical grammar for
 //    a button's custom_id. Format: "<verb>:<kind>:<id>". Verb must be a
 //    key of BUTTON_LABELS (lowercase). kind is a free-form discriminator
 //    (e.g. "vendor-reply", "cadence-tick"). id is the per-row identifier.
@@ -64,7 +64,7 @@ const KIND_RE = /^[a-z][a-z0-9-]*$/;
  * @param {string} kind  - lowercase-kebab discriminator
  * @param {string} id    - opaque per-row identifier (any non-empty string)
  * @returns {string}
- * @throws {Error} on grammar violations -- callers should fail loudly.
+ * @throws {Error} on grammar violations, callers should fail loudly.
  */
 export function buttonId(verb, kind, id) {
   const v = String(verb || "").toLowerCase();

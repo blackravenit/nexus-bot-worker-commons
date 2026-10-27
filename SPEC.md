@@ -1,4 +1,4 @@
-# nexus-bot-worker-commons -- SPEC.md
+# nexus-bot-worker-commons: SPEC.md
 
 ## Why this exists
 
@@ -373,7 +373,7 @@ Each bot deploy script needs to npm install before wrangler deploy. The shared l
    - Fix tools/sentinelone.js handler signatures to (input, env, ctx)
    - npx wrangler deploy
    - Smoke test in #robert-soc with @robert plus bang-cmds
-5. Repeat for dexter, maxwell, courtney, jacob, moxie, wren -- each port becomes a config object plus tool/persona files.
+5. Repeat for dexter, maxwell, courtney, jacob, moxie, wren, each port becomes a config object plus tool/persona files.
 
 ## Acceptance criteria
 

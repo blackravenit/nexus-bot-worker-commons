@@ -1,8 +1,8 @@
 // =============================================================================
-// testing/signedFetch.js -- fire a Nexus-signed callback at a worker route in a
+// testing/signedFetch.js, fire a Nexus-signed callback at a worker route in a
 // vitest-pool-workers test. Takes the `fetcher` (the bot's test passes `SELF`
 // from "cloudflare:test") as a PARAMETER so this commons file never imports the
-// virtual `cloudflare:test` module -- which would not resolve from the symlinked
+// virtual `cloudflare:test` module, which would not resolve from the symlinked
 // commons package and would pollute commons' own node:test run.
 // =============================================================================
 

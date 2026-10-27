@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// check-email-outlook.mjs -- fail the build when an email template uses CSS that
+// check-email-outlook.mjs, fail the build when an email template uses CSS that
 // classic Outlook silently drops.
 //
 // Outlook on Windows renders mail through Word, not a browser engine. Word

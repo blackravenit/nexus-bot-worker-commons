@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/attachments.js -- Multimodal attachment loader for Nexus bot callbacks.
+// lib/attachments.js, Multimodal attachment loader for Nexus bot callbacks.
 //
 // Nexus's dispatchBotCallback (worker/src/lib/message-insert.js) hydrates the
 // payload it sends to each bot with an `attachments` array of the form:
@@ -16,9 +16,9 @@
 //
 //   PDFs            -> { type: "document", source: { type: "base64", media_type: "application/pdf", data } }
 //   Native images   -> { type: "image",    source: { type: "base64", media_type: <mime>, data } }
-//     (png, jpeg, gif, webp -- the only formats Anthropic vision accepts)
+//     (png, jpeg, gif, webp, the only formats Anthropic vision accepts)
 //   Exotic images   -> transcoded to JPEG via env.IMAGES, then an image block
-//     (heic, heif, tiff, bmp, avif -- e.g. iPhone photos)
+//     (heic, heif, tiff, bmp, avif, e.g. iPhone photos)
 //   Word / Excel    -> { type: "text", text: <extracted document text> }
 //     (.docx/.xlsx have no native reader; we crack the OOXML zip ourselves)
 //   SVG + text/*    -> { type: "text", text: <source / file text> }
@@ -129,7 +129,7 @@ async function fetchOne(env, baseUrl, token, att) {
 
   if (typeof att.size_bytes === "number" && att.size_bytes > PER_FILE_MAX_BYTES) {
     console.warn(
-      `[attachments] skipping ${att.filename} -- ${att.size_bytes} bytes exceeds per-file cap ${PER_FILE_MAX_BYTES}`
+      `[attachments] skipping ${att.filename}, ${att.size_bytes} bytes exceeds per-file cap ${PER_FILE_MAX_BYTES}`
     );
     return null;
   }
@@ -255,8 +255,8 @@ export async function buildBlock(env, mime, buf, filename) {
  * BEFORE the text body. They will be the first thing Claude sees, which
  * matters for documents (the OUTPUT CONTRACT pattern relies on text last).
  *
- * @param {object} env -- worker env (reads INTERNAL_ADMIN_TOKEN, NEXUS_BASE_URL, IMAGES)
- * @param {Array<object>} attachments -- payload.attachments from Nexus
+ * @param {object} env, worker env (reads INTERNAL_ADMIN_TOKEN, NEXUS_BASE_URL, IMAGES)
+ * @param {Array<object>} attachments, payload.attachments from Nexus
  * @param {object} [options]
  * @param {string} [options.tokenEnvVar=NEXUS_INTERNAL_TOKEN]
  *   Override the env var name carrying the X-Internal-Token. Falls back to
@@ -294,7 +294,7 @@ async function buildUrlAttachmentBlocks(env, attachments, options = {}) {
   for (const att of attachments) {
     if (totalBytes >= TOTAL_SOFT_BYTES) {
       warnings.push(
-        `Skipped ${att.filename || att.id} -- attachment budget (${TOTAL_SOFT_BYTES} bytes) already spent.`
+        `Skipped ${att.filename || att.id}, attachment budget (${TOTAL_SOFT_BYTES} bytes) already spent.`
       );
       continue;
     }
@@ -305,7 +305,7 @@ async function buildUrlAttachmentBlocks(env, attachments, options = {}) {
     }
     if (totalBytes + result.bytes > TOTAL_HARD_BYTES) {
       warnings.push(
-        `Skipped ${att.filename || att.id} -- would exceed Anthropic 32 MB cap.`
+        `Skipped ${att.filename || att.id}, would exceed Anthropic 32 MB cap.`
       );
       continue;
     }

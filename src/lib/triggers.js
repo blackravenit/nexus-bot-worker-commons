@@ -12,7 +12,7 @@
 //   1. body contains @<alias> mention (case-insensitive, word-boundary-safe)
 //   2. body contains "<botName>:" at the start or after whitespace
 //   3. body starts with "<botName> " (case-insensitive)
-//   4. replyTo === lastMsgId (both non-null) -- user replied to bot's last message
+//   4. replyTo === lastMsgId (both non-null): user replied to bot's last message
 //
 // botName is always added as an implicit alias alongside the supplied aliases.
 //

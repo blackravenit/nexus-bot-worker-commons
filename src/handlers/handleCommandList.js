@@ -17,7 +17,7 @@
 //
 // Auth: X-API-Key matching config.listKeyEnvVar (falls back to nexusKeyEnvVar).
 //   Pass the same outbound Nexus key so the Nexus frontend can call this without
-//   adding a new secret. The key never leaves the backend -- callers must present
+//   adding a new secret. The key never leaves the backend, callers must present
 //   it in the X-API-Key header.
 //
 // Hard rules:

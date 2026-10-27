@@ -3,8 +3,8 @@
 //
 // The chat pipeline historically persisted only two things per turn: the
 // user's message and the bot's final TEXT reply. Everything the bot actually
-// DID in between -- reading an email, drafting a reply, staging a HITL card,
-// creating a reminder -- lived inside the tool loop and was discarded the
+// DID in between, reading an email, drafting a reply, staging a HITL card,
+// creating a reminder, lived inside the tool loop and was discarded the
 // instant the turn ended. One turn later the bot had no record of its own
 // actions, so it would draw a blank on "the email I cc'd you on" or claim it
 // had done something it never did.
@@ -82,7 +82,7 @@ const RESULT_WRAPPER_KEYS = [
 const MAX_RESULT_SUMMARY_LEN = 160;
 
 // Verbs that assert an action was completed. Used to detect a reply that
-// claims success. Past-tense / done-state phrasing only -- "I'll add" or
+// claims success. Past-tense / done-state phrasing only, "I'll add" or
 // "want me to send" are intentions, not claims, and must not match.
 const SUCCESS_CLAIM_RE =
   /\b(?:done|added|created|scheduled|saved|set(?: up| a)?|staged|sent|emailed|drafted|updated|deleted|removed|booked|posted|reminded|enrolled|cancelled|canceled|completed|marked|filed|logged|assigned)\b/i;
@@ -207,7 +207,7 @@ export function buildActionBreadcrumb(toolTrace, staged = null) {
     let entry = summarizeToolCall(t.name, t.input, !!t.isError);
     // Append identifiers the tool RETURNED (e.g. the invoice id from a list/
     // create) so a follow-up turn can act on "it" without re-querying. Only on
-    // success -- a failed call returned no usable referent.
+    // success, a failed call returned no usable referent.
     if (!t.isError && t.result !== undefined) {
       const resultIds = summarizeToolResult(t.result);
       if (resultIds) entry += ` -> ${resultIds}`;

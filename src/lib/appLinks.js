@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/appLinks.js -- deep-link builders + url-button helpers for bot posts.
+// lib/appLinks.js, deep-link builders + url-button helpers for bot posts.
 //
 // Why this exists (2026-06-04): Maxwell posted the daily reconciliation alert
 // and, when asked for a link to the unreconciled transactions, replied that it
@@ -208,7 +208,7 @@ export function ninjaTicketUrl(env, ticketId) {
 // The CRM SPA routes by URL HASH ("#<page>/<id>"), not path, and its page names
 // differ from the bot-facing record "kind" (a prospect lives on the "leads"
 // page). A path-style link (/prospects/<id>) loads the SPA with an empty hash
-// and falls straight through to the dashboard -- which is exactly the "Open in
+// and falls straight through to the dashboard, which is exactly the "Open in
 // CRM goes to the dashboard" bug Brian hit. Map kind -> page and emit a hash
 // deep-link that the SPA opens directly on the record.
 const CRM_PAGE_BY_KIND = {

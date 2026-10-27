@@ -10,7 +10,7 @@
 //
 // @channel resolves on the bot post route (resolveAndInsertMentions) to a
 // mention + push fan-out to every active human member of the channel, so a real
-// person gets pinged -- not just a line of text in a feed.
+// person gets pinged, not just a line of text in a feed.
 //
 // Best-effort + deduped: a mass outage that fails many sends in one cron
 // invocation collapses to a single ping per (bot, reason) per window, so we
@@ -114,7 +114,7 @@ export function isConfigFailure(reason, { status, errorCode } = {}) {
 /**
  * Notify a bot's home channel that an outbound email failed to send. Use this
  * in the catch path of a worker's email-send wrapper, right before rethrowing
- * (so existing behavior -- pausing a cadence, logging fleet-errors -- is
+ * (so existing behavior, pausing a cadence, logging fleet-errors, is
  * preserved AND a human gets an @channel ping). Never throws.
  *
  * @param {object} env
@@ -151,8 +151,8 @@ export async function notifyEmailDown(env, { bot, to, subject, reason, context, 
     // a permission error, and the siren belongs to real outages.
     const config = isConfigFailure(reason, { status, errorCode });
     const headline = config
-      ? "EMAIL SEND BLOCKED -- that mailbox is not permitted to send, so this is a configuration fix, not a dropped message. Sending it by hand will fail the same way."
-      : `@channel EMAIL SEND FAILED -- the mail system rejected an outbound message, so I'm flagging it here so someone can follow up manually.`;
+      ? "EMAIL SEND BLOCKED, that mailbox is not permitted to send, so this is a configuration fix, not a dropped message. Sending it by hand will fail the same way."
+      : `@channel EMAIL SEND FAILED, the mail system rejected an outbound message, so I'm flagging it here so someone can follow up manually.`;
     const body = [
       headline,
       ``,

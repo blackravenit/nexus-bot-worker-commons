@@ -14,7 +14,7 @@
 //   1. RFC 3834 + Microsoft auto-response headers (most reliable when present).
 //   2. Subject heuristics (Outlook always prefixes OOO with "Automatic reply:";
 //      common non-English locales included).
-//   3. Sender heuristics (no-reply@ / mailer-daemon@ / postmaster@ -- replying
+//   3. Sender heuristics (no-reply@ / mailer-daemon@ / postmaster@, replying
 //      to these is always wrong).
 //
 // One source of truth so every bot's mail poller enforces the same gate.
@@ -28,7 +28,7 @@ const AUTO_SUBJECT_RE =
 
 // Unambiguous machine-mail phrases matched ANYWHERE in the subject, not just at
 // the start. AP-intake / capture systems put their own label first, so the
-// anchored rule above misses them -- e.g. Concur's "Concur Auto Reply Invoice
+// anchored rule above misses them, e.g. Concur's "Concur Auto Reply Invoice
 // INV-0419 ..." which looped Maxwell into replying to a no-reply bot
 // (2026-06-25). These phrases are machine-only enough to be safe unanchored;
 // not replying is the safe failure mode anyway.
@@ -52,7 +52,7 @@ const DMARC_REPORT_SUBJECT_RE =
 
 // Domains whose mail is system-generated end to end (AP-intake / expense-capture
 // acknowledgements). We never hold a human conversation with these, so never
-// auto-reply -- replying loops with their bot. Concur invoice-capture
+// auto-reply, replying loops with their bot. Concur invoice-capture
 // (concursolutions.com) is the first member; add new AP-intake systems here.
 const AUTO_SENDER_DOMAIN_RE =
   /@(?:[\w-]+\.)*(?:concursolutions\.com|concur\.com)$/i;

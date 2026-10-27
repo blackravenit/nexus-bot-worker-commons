@@ -11,7 +11,7 @@
 //
 // Usage:
 //   bangReport({ botName: "Dexter", verb: "status", args: "fleet", sections })
-//     -> ```\nDexter !status -- fleet\nGenerated: ...\n=====\n<sec>\n```
+//     -> ```\nDexter !status, fleet\nGenerated: ...\n=====\n<sec>\n```
 //
 //   bangAlert({ botName: "Courtney", verb: "ticket-alert", sections })
 //     -> ```\nCourtney ticket-alert\nGenerated: ...\n=====\n<sec>\n```
@@ -54,11 +54,11 @@ const SECTION_RULE = "-".repeat(REPORT_WIDTH);
  * @param {string} opts.verb - bang command verb without leading !
  * @param {string} [opts.args] - args string from the command invocation
  * @param {Array<string|string[]>} opts.sections - per-section body (string or array of lines)
- * @param {string} [opts.subtitle] - optional override for the title line; default `${botName} !${verb}{ -- args}`
+ * @param {string} [opts.subtitle] - optional override for the title line; default `${botName} !${verb}{, args}`
  * @returns {string} markdown-ready report (code-block wrapped)
  */
 export function bangReport({ botName, verb, args, sections, subtitle } = {}) {
-  const argsPart = args ? ` -- ${args}` : "";
+  const argsPart = args ? `: ${args}` : "";
   const title = subtitle || `${botName} !${verb}${argsPart}`;
   const out = [
     title,
@@ -153,7 +153,7 @@ export function chunkBangReport(report, opts = {}) {
  * @returns {string} code-block-wrapped report ready to pass to postToNexus
  */
 export function bangAlert({ botName, verb, args, sections } = {}) {
-  const argsPart = args ? ` -- ${args}` : "";
+  const argsPart = args ? `: ${args}` : "";
   return bangReport({
     botName,
     verb,

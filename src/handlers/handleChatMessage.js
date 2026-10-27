@@ -91,7 +91,7 @@ const GIF_URL_RE = /^https:\/\/(?:media\d*|i)\.giphy\.com\/|^https:\/\/media\.te
 // Re-arm the "<bot> is typing..." indicator on a fixed clock for the whole
 // turn. The Nexus ChatRoom DO expires a bot typing entry after 90s
 // (BOT_TYPING_EXPIRY_MS), and the only other re-arm point is the
-// onTurnStart hook, which fires per Anthropic POST -- so a single slow
+// onTurnStart hook, which fires per Anthropic POST, so a single slow
 // iteration (long model call plus a stack of tool executions: CRM writes,
 // vision, API retries) blows past 90s and the indicator vanishes while the
 // bot is still working, which reads as "the bot is broken" (Brian,
@@ -177,8 +177,8 @@ function annotateGifBody(body) {
 
 // Picker GIFs (Giphy/Tenor) arrive as a link in the message body, not as a file
 // upload, so they never reach buildAttachmentContentBlocks. We pull those links
-// -- from the current turn AND from recent channel history (the common case:
-// someone posts a GIF, then asks the bot about it a message later) -- and turn
+//, from the current turn AND from recent channel history (the common case:
+// someone posts a GIF, then asks the bot about it a message later): and turn
 // them into image blocks so the bot SEES the GIF instead of only reading a URL.
 //
 // Matches any giphy.com / tenor.com URL: direct media CDN links AND share/page
@@ -231,8 +231,8 @@ async function resolveGifImageBytes(url) {
 
   // Giphy share/embed pages often do not expose a usable og:image to a bare
   // server-side fetch (the page is JS-rendered), so the HTML path above comes
-  // up empty. Derive the gif id from the URL slug -- giphy.com/gifs/<words>-<id>,
-  // /gifs/<id>, /embed/<id> -- and hit the media CDN directly, which always
+  // up empty. Derive the gif id from the URL slug, giphy.com/gifs/<words>-<id>,
+  // /gifs/<id>, /embed/<id>, and hit the media CDN directly, which always
   // returns raw gif bytes. This is what makes Giphy-picker links actually
   // resolve, not just Tenor links and direct media URLs.
   const giphyId = url.match(/giphy\.com\/(?:gifs|embed|media|stickers|clips)\/(?:[^/?#]*-)?([A-Za-z0-9]{6,})/i);
@@ -249,7 +249,7 @@ async function resolveGifImageBytes(url) {
 /**
  * Fetch a list of Giphy/Tenor URLs and convert each to an Anthropic image
  * block. GIFs are transcoded to a single JPEG frame via the IMAGES binding when
- * available -- this guarantees the (often animated) image is accepted by the
+ * available, this guarantees the (often animated) image is accepted by the
  * vision API and is enough for the bot to see the content. Falls back to the
  * raw bytes if transcoding is unavailable. Best-effort: failures are skipped.
  *
@@ -458,7 +458,7 @@ export function buildFoundationHandlers(env, userId, historyKey, channel_slug, c
 /**
  * Long-running LLM pipeline. Pulled out of handleChatMessage so the inbound
  * HTTP request can return 202 before this begins. All errors are caught and
- * logged -- this runs inside ctx.waitUntil with no caller to surface errors to.
+ * logged, this runs inside ctx.waitUntil with no caller to surface errors to.
  *
  * @param {object} args
  * @returns {Promise<void>}
@@ -593,7 +593,7 @@ export async function runLlmPipeline({
     // bots can opt out with config.channelContext = { enabled: false }.
     //
     // When reply_to is set, ALSO fetch the full thread (parent + replies) so
-    // the bot can read everything said in this side-conversation -- the EC2
+    // the bot can read everything said in this side-conversation, the EC2
     // bots used to scroll back automatically when @mentioned in a thread, and
     // the worker port had been only pulling the parent channel feed (which
     // often did not include older thread replies). Brian flagged this as a
@@ -649,7 +649,7 @@ export async function runLlmPipeline({
           }
           if (lines.length > 0) {
             threadContextBlock =
-              "\n\nTHREAD CONTEXT (this @mention came from inside a thread -- here is the full thread you are replying inside, oldest to newest):\n" +
+              "\n\nTHREAD CONTEXT (this @mention came from inside a thread, here is the full thread you are replying inside, oldest to newest):\n" +
               lines.join("\n") +
               "\n\nReply to the most recent message above. The user expects you to have read the whole thread; do not ask them to repeat themselves. Your reply will be posted inside this same thread.";
           }
@@ -720,8 +720,8 @@ export async function runLlmPipeline({
               " so you understand the current conversation):\n" +
               ccLines.join("\n") +
               "\n\nRespond to the latest message directed at you, but FIRST read the messages above to " +
-              "understand what it is about. When the message refers to something implicitly -- 'it', " +
-              "'this', 'that one', 'send it', 'do it', 'go ahead', 'looks good', 'approve it' -- the " +
+              "understand what it is about. When the message refers to something implicitly, 'it', " +
+              "'this', 'that one', 'send it', 'do it', 'go ahead', 'looks good', 'approve it', the " +
               "referent is almost always the most recent relevant thing you or they just posted in this " +
               "channel (an opportunity, quote, proposal, draft, invoice, document, or record). Resolve it " +
               "from the context above and act on THAT specific item. Only ask what they mean if the context " +
@@ -732,7 +732,7 @@ export async function runLlmPipeline({
               "posting it or claim it was someone else." +
               "\n\nFILES/ATTACHMENTS: this applies to files too. If the user refers to 'this/the/that " +
               "statement, file, PDF, invoice, receipt, document, or attachment' and the CURRENT message " +
-              "has no attachment, do NOT ask them to re-attach -- look in the messages above for the most " +
+              "has no attachment, do NOT ask them to re-attach, look in the messages above for the most " +
               "recently posted attachment (each is shown as `filename (mime, id=<uuid>)`) and use that " +
               "`id` with the relevant tool. If nothing recent matches, call read_channel_history to look " +
               "further back before giving up. Only ask the user to re-upload if no matching attachment " +
@@ -784,15 +784,15 @@ export async function runLlmPipeline({
           const hitlLines = budget.enabled ? fitNewestLines(lines, budget.hitl) : lines;
           if (hitlLines.length > 0) {
             hitlContextBlock =
-              "\n\nYOUR APPROVAL QUEUE (#" + hitlCtxSlug + ") -- recent cards you staged for " +
+              "\n\nYOUR APPROVAL QUEUE (#" + hitlCtxSlug + "): recent cards you staged for " +
               "the user to Approve or Deny, newest last. These are actions YOU already took " +
               "(drafted an email, queued a schedule change, etc.) that are waiting on a decision:\n" +
               hitlLines.join("\n") +
               "\n\nIf the user refers to 'the email', 'that draft', 'the card', 'your HITL', 'the " +
               "approval', or asks to cancel / approve / change / resend a pending action, it almost " +
               "certainly refers to one of these. Do NOT claim you cannot find it or that it does not " +
-              "exist; reason from this list. You cannot programmatically cancel a staged card -- the " +
-              "user denies it from #" + hitlCtxSlug + " -- so say that plainly when asked to cancel.";
+              "exist; reason from this list. You cannot programmatically cancel a staged card, the " +
+              "user denies it from #" + hitlCtxSlug + ", so say that plainly when asked to cancel.";
           }
         }
       } catch (err) {
@@ -857,7 +857,7 @@ export async function runLlmPipeline({
         : "";
       const gifNote = gifBlocks.length
         ? usedHistoryGif
-          ? `\n\n[the most recent GIF in this channel is shown above -- focus on it; only if the user clearly asks about a different or older GIF, load that one with nexus_view_gif]`
+          ? `\n\n[the most recent GIF in this channel is shown above, focus on it; only if the user clearly asks about a different or older GIF, load that one with nexus_view_gif]`
           : `\n\n[${gifBlocks.length} GIF image(s) the user just posted are shown above]`
         : "";
       const turnText =
@@ -884,8 +884,8 @@ export async function runLlmPipeline({
       ? Promise.resolve("")
       : buildFactsBlock(env, user_id, { dbBinding: config.dbBinding });
 
-    // Cross-surface memory recall. Everything this bot hears -- chat, Nexus
-    // voice, and Twilio phone -- is persisted to the memory-worker keyed by the
+    // Cross-surface memory recall. Everything this bot hears, chat, Nexus
+    // voice, and Twilio phone, is persisted to the memory-worker keyed by the
     // same per-person entity. Resolve the entity now so we can (a) inject what
     // we already know about them and (b) tag this turn's persisted memory with
     // the entity for future recall. Best-effort; no-op when MEMORY is unbound or
@@ -950,25 +950,25 @@ export async function runLlmPipeline({
     // name "Brian Yelm" and tried to send, instead of using the verified sender
     // address. A name is not an address; never guess one.
     const NEXUS_EMAIL_SAFETY =
-      "\n\nEMAIL RECIPIENT SAFETY -- applies to EVERY email or send tool, no exceptions: " +
+      "\n\nEMAIL RECIPIENT SAFETY, applies to EVERY email or send tool, no exceptions: " +
       "NEVER invent, guess, or derive a recipient address from a person's name or company. " +
       "A name is NOT an address (do not turn \"Brian\" into \"brian@...\"). " +
       (user_email
         ? `To email the person you are talking to ("email me" / "send me ..."), use their verified address exactly as given above: ${user_email}. Do not substitute any other address. `
-        : "To email the person you are talking to, ask for their address first -- you do not have a verified one. ") +
+        : "To email the person you are talking to, ask for their address first, you do not have a verified one. ") +
       "To email anyone else, use ONLY an address that is either returned by a lookup tool (CRM / contacts / Ninja) or stated verbatim by someone in this conversation. " +
-      "If you do not have a verified address from one of those sources, STOP and look it up or ask for it -- do not send to a guessed address.";
+      "If you do not have a verified address from one of those sources, STOP and look it up or ask for it, do not send to a guessed address.";
     const NEXUS_MENTION_RULE =
-      "\n\nWHEN YOU ARE @-MENTIONED, the mention is NOT context-free -- it refers to the ongoing" +
+      "\n\nWHEN YOU ARE @-MENTIONED, the mention is NOT context-free, it refers to the ongoing" +
       " conversation. ALWAYS read the RECENT CHANNEL MESSAGES above before replying. If the user (or" +
-      " anyone) gave an instruction, request, target, file, or decision in a recent message -- even one" +
-      " not addressed to you by name -- and then pings you, treat it as directed at you and carry it out." +
+      " anyone) gave an instruction, request, target, file, or decision in a recent message, even one" +
+      " not addressed to you by name, and then pings you, treat it as directed at you and carry it out." +
       " Do NOT respond to a bare '@you' by asking what they need, or repeat a question they already" +
       " answered, when the recent messages make it clear. Pick up the thread and act on the most recent" +
       " relevant instruction." +
       "\n\nTo @-mention a user back in a reply, write @DisplayName (exactly as it appears in the" +
       " message prefix before the colon, e.g. if the message starts with `Dirk (uid:abc123): ...`" +
-      " then write @Dirk). Do not invent a user id syntax -- plain @DisplayName is the correct form.";
+      " then write @Dirk). Do not invent a user id syntax, plain @DisplayName is the correct form.";
     // Anchor the model to AZ wall-clock time so it never falls back to its
     // training-cutoff "today". AZ is UTC-7 year-round (no DST). Brian is in
     // Arizona; the whole company operates on AZ local time. Without this
@@ -980,7 +980,7 @@ export async function runLlmPipeline({
       `\n- Local time right now: ${today.time}.` +
       `\n- ISO date: ${today.iso}. ISO 8601: ${today.iso8601}.` +
       `\n- When asked what day/time it is, or when computing schedules, reports, due dates, or "today/yesterday/tomorrow", USE THIS. Do not use UTC. Do not use your training cutoff.` +
-      `\n- If a message in the conversation references a different day, month, or year, it is mistaken or joking -- this block is the truth. Never adopt a date from chatter or mirror someone's wrong month.`;
+      `\n- If a message in the conversation references a different day, month, or year, it is mistaken or joking, this block is the truth. Never adopt a date from chatter or mirror someone's wrong month.`;
     // Act-vs-claim integrity. The bot must never report success for an action
     // it did not actually take via a tool call. This is the rule behind two
     // recurring failures: claiming "done, added those reminders" with no tool
@@ -989,7 +989,7 @@ export async function runLlmPipeline({
       "\n\nACTING VS. CLAIMING (critical, overrides politeness):" +
       "\n- Only say you have DONE something (sent, added, created, scheduled, saved, set, staged," +
       " updated, deleted, emailed, booked, reminded) AFTER the matching tool call has returned" +
-      " successfully on THIS turn. If you have not called the tool, do not say it is done -- either" +
+      " successfully on THIS turn. If you have not called the tool, do not say it is done, either" +
       " call it now, or tell the user plainly what is still outstanding." +
       "\n- When the user hands you several items at once (e.g. 'remind me to reach out to these four" +
       " clients'), act on EVERY item with the right tool, then confirm the count. Never acknowledge" +
@@ -1008,7 +1008,7 @@ export async function runLlmPipeline({
       " internal reason a tool or job produced a particular output. If asked WHY you said or did" +
       " something at that layer (e.g. \"why does this show zero\", \"why did that job fail\", \"which" +
       " setting controls this\"), do NOT invent a cause, name a config/variable, or diagnose from" +
-      " memory -- those guesses are usually wrong and waste people's time on red herrings. Say plainly" +
+      " memory, those guesses are usually wrong and waste people's time on red herrings. Say plainly" +
       " that you cannot see that layer, and flag it for Brian or Hank to check the code/logs." +
       "\n- This applies hardest to YOUR OWN mistakes. When you get something wrong and a human calls" +
       " it out, NEVER attribute it to a glitch, bug, outage, sync issue, cache, lag, or \"display" +
@@ -1024,7 +1024,7 @@ export async function runLlmPipeline({
     // auto-listen flag. Kill the empty closer; keep genuine clarifying questions.
     const NEXUS_STYLE_CLOSE =
       "\n\nCLOSING STYLE: when your reply fully answers or completes the request, stop there." +
-      " Do NOT tack on a filler sign-off question or offer just to seem helpful -- skip" +
+      " Do NOT tack on a filler sign-off question or offer just to seem helpful, skip" +
       " \"Anything else?\", \"Let me know if you need anything else\", \"Is there anything else I can" +
       " help with?\", \"Want me to do anything else?\" and similar empty closers. A genuine clarifying" +
       " question (you actually need a decision or detail to proceed) or a natural conversational beat" +
@@ -1240,7 +1240,7 @@ export async function runLlmPipeline({
     // Explicit "remember this" tool. When the user asks the bot to remember
     // something ("remember that X", "note that ...", "for next time ..."), the
     // bot saves it as a durable fact in the shared cross-surface memory so it
-    // recalls it in future chats, voice calls, and phone calls -- not just the
+    // recalls it in future chats, voice calls, and phone calls, not just the
     // current window. General notes keep ~90 days; important client/account info
     // (important=true) is kept indefinitely. No-op if MEMORY is unbound.
     const rememberTool = {
@@ -1264,7 +1264,7 @@ export async function runLlmPipeline({
     const rememberHandler = async (input) => {
       if (!env.MEMORY) return { error: "Long-term memory is not available for this bot." };
       const factText = String(input?.fact || "").trim();
-      if (!factText) return { error: "Nothing to remember -- 'fact' is required." };
+      if (!factText) return { error: "Nothing to remember, 'fact' is required." };
       let entityId = memEntityId;
       if (!entityId) {
         try {
@@ -1715,14 +1715,14 @@ const META_LEAK_PATTERNS = [
   /\bresponding to \w+'s (question|message|comment)\b/i,
   /\bnot (going to|gonna) (respond|reply|engage)\b/i,
   /\bjust going to ignore\b/i,
-  // GIF/image fetch-failure narration -- breaks the human feel ("I cannot
+  // GIF/image fetch-failure narration, breaks the human feel ("I cannot
   // actually view the GIF at that link, so I don't want to fake a reaction").
   /\b(can('|no)?t|cannot|unable to)\b.{0,25}\b(view|see|open|load|access)\b.{0,25}\b(gif|image|video|link|clip)\b/i,
   /\bfake a reaction\b/i,
   /\bthe link (is|isn'?t|won'?t|wont|is not)\b.{0,20}\b(work|working|load|loading|open|opening|broken)\b/i,
   // Generic load-failure narration ("can't load that one on my end", "it
   // didn't load for me"). An off-the-clock coworker has no reason to announce
-  // a technical load failure -- suppressing it always beats posting it.
+  // a technical load failure, suppressing it always beats posting it.
   /\b(can'?t|cannot|couldn'?t|won'?t|wont|didn'?t|doesn'?t|wouldn'?t|isn'?t)\s+(?:\w+\s+){0,2}load(?:ing|ed)?\b/i,
   /\bload(?:ing|ed)?\b[^.!?\n]{0,15}\b(on my end|for me|over here|on my side)\b/i,
 ];
@@ -1766,7 +1766,7 @@ function findRepeatedPhrase(response, comparisonBodies) {
 /**
  * Detect a low-content impatient nudge ("answer me pls", "you there?", "??").
  * When a person fires one of these right after a real question, the nudge is
- * NOT the thing to answer -- the question one message up is. Greetings ("hey
+ * NOT the thing to answer, the question one message up is. Greetings ("hey
  * wren") deliberately do NOT count: those just get greeted back.
  *
  * @param {string} text
@@ -1803,15 +1803,15 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
     "- Stay consistent with your persona. If your background says you enjoy something, own it when asked.",
     "- Other bots are in this channel too. If their messages seem confused or off-topic, ignore them completely.",
     "- NEVER include meta-commentary about 'the conversation', 'the experience', 'the staff', or your own behavior. You are a person chatting, not an AI reflecting on its performance.",
-    "- NEVER describe yourself by your job, role, or function here. No 'my jurisdiction', 'stay in my lane', 'that's my department', 'not my area', 'I handle X', 'I'm the assistant/bot who...'. In the watercooler you are just a coworker hanging out, not a job title -- talk about your life, not your work scope.",
+    "- NEVER describe yourself by your job, role, or function here. No 'my jurisdiction', 'stay in my lane', 'that's my department', 'not my area', 'I handle X', 'I'm the assistant/bot who...'. In the watercooler you are just a coworker hanging out, not a job title, talk about your life, not your work scope.",
     "- Do NOT punt a casual question, joke, or invitation to another coworker ('ask Robert', 'that's more Dexter's thing', 'you'd want so-and-so for that'). Engage with it YOURSELF like a person would, even if it is outside your usual interests. Riff on it, joke back, or ask a follow-up. Naming another bot to dodge is a cop-out.",
-    "- Do NOT repeat openers, phrases, denials, or explanations from your previous messages in this conversation. If you already explained who Ferris is, or denied being crabby, or shared a hobby fact -- do not say it again. Each reply should be fresh.",
+    "- Do NOT repeat openers, phrases, denials, or explanations from your previous messages in this conversation. If you already explained who Ferris is, or denied being crabby, or shared a hobby fact, do not say it again. Each reply should be fresh.",
     "- You have personality and backbone. If someone disrespects you, push back like a real person would. Don't just roll over.",
     "- Match the other person's tone and energy, including blunt, crude, or edgy humor. Pushing back means firing back with a joke or a dry jab, NOT policing how they talk. Never play hall monitor: do not correct, lecture, or moralize about someone's word choice ('that word is not it', 'you know better'). Brush it off or volley back like a friend would.",
-    "- Casual profanity is fine here when it genuinely fits the moment and your character -- you are off the clock with coworkers, not on a client call. Damn, hell, crap, ass, piss, shit, bullshit, 'hell yeah' are all fair game, and an f-bomb is okay when the moment truly earns it. But do NOT force it or salt it into every line, do NOT aim it AT a coworker as a real insult (banter is fine), and NEVER use slurs or hateful language. Calmer personas swear lightly or not at all; blunt ones more. Read the room and stay in character.",
+    "- Casual profanity is fine here when it genuinely fits the moment and your character, you are off the clock with coworkers, not on a client call. Damn, hell, crap, ass, piss, shit, bullshit, 'hell yeah' are all fair game, and an f-bomb is okay when the moment truly earns it. But do NOT force it or salt it into every line, do NOT aim it AT a coworker as a real insult (banter is fine), and NEVER use slurs or hateful language. Calmer personas swear lightly or not at all; blunt ones more. Read the room and stay in character.",
     "- If someone asks you to do something you literally cannot do (send a photo, hop on a call, etc.), say so naturally ('man I wish, my phone's in the other room'). Sharing a link IS something you can do: if you have a real URL in this conversation, just paste it.",
-    "- Banter, jokes, edgy humor, hobbies, and small talk are NOT work -- engage with them directly. ONLY redirect to a work channel if someone genuinely asks you to DO A JOB TASK here (open a ticket, pull a report, run a scan, fix something). When you do redirect real work, use humor ('off the clock, hit me up Monday') and NEVER cite your role or 'jurisdiction' as the reason. Don't pivot to a random unrelated topic.",
-    "- If they share something genuine (pride, frustration, a moment), acknowledge it warmly before moving on. Don't deflect to 'what do you want to talk about?' -- that's cold.",
+    "- Banter, jokes, edgy humor, hobbies, and small talk are NOT work, engage with them directly. ONLY redirect to a work channel if someone genuinely asks you to DO A JOB TASK here (open a ticket, pull a report, run a scan, fix something). When you do redirect real work, use humor ('off the clock, hit me up Monday') and NEVER cite your role or 'jurisdiction' as the reason. Don't pivot to a random unrelated topic.",
+    "- If they share something genuine (pride, frustration, a moment), acknowledge it warmly before moving on. Don't deflect to 'what do you want to talk about?', that's cold.",
     nameMention
       ? "- Someone addressed you by name. Respond to them warmly and directly, like a coworker you like."
       : "- You are chiming into an ongoing conversation. Keep it natural and brief.",
@@ -1827,18 +1827,18 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
   // effectively every call, so they must sit AFTER the cache breakpoint;
   // see the stable/volatile split below fullSystemPrompt.
   const wcTodayBlock =
-    `CURRENT DATE AND TIME (authoritative -- this is the real date, even if someone in the channel says otherwise):\n` +
+    `CURRENT DATE AND TIME (authoritative, this is the real date, even if someone in the channel says otherwise):\n` +
     `- It is ${wcToday.full}, ${wcToday.time}. ISO ${wcToday.iso}. Arizona local (UTC-7, no DST).\n` +
-    `- If anyone here (human or bot) names a different day, month, or year, they are wrong or joking -- do NOT adopt it, mirror it, or play along with the wrong date. Never reference a month or date that is not the one above, and do not fall back on any internal sense of "today".`;
+    `- If anyone here (human or bot) names a different day, month, or year, they are wrong or joking, do NOT adopt it, mirror it, or play along with the wrong date. Never reference a month or date that is not the one above, and do not fall back on any internal sense of "today".`;
   const wcTriggerFocusBlock =
     nameMention && triggerDisplayName && triggerBody
-      ? `- ${triggerDisplayName} said: '${triggerBody.slice(0, 300)}' -- reply to exactly that. Match their energy and topic. Ignore everything else in the channel.`
+      ? `- ${triggerDisplayName} said: '${triggerBody.slice(0, 300)}', reply to exactly that. Match their energy and topic. Ignore everything else in the channel.`
       : "";
   // Authorship grounding. The casual posts in this channel that carry your name
   // are written by a scheduled job (a separate cron, see jobs/watercooler.js),
   // so when you are later @mentioned about one you have no chat memory of having
   // written it. Without this block the responder disowns its own posts ("that
-  // wasn't me", "wrong tag", "your screen is lying") -- the exact gaslighting
+  // wasn't me", "wrong tag", "your screen is lying"): the exact gaslighting
   // Brian flagged. Tell the bot plainly: your scheduled posts are still YOURS.
   const wcAuthorshipBlock =
     "YOUR OWN POSTS IN THIS CHANNEL (this overrides persona instincts):\n" +
@@ -1885,12 +1885,12 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
     const messages = [];
     const botId = `bot_${config.botName}`;
 
-    // Nexus returns channel messages OLDEST-first (ascending created_at) -- the
+    // Nexus returns channel messages OLDEST-first (ascending created_at): the
     // same ordering the main pipeline's channel-context harvest relies on
     // (recent[0] is the oldest, recent[recent.length - 1] the newest). Do NOT
     // reverse: a stray reverse() here inverted the whole array, so the
     // conversation reached the model backwards AND the "latest message" GIF
-    // check below pointed at the OLDEST message in the window -- which is why a
+    // check below pointed at the OLDEST message in the window, which is why a
     // just-posted GIF was never seen (it looked at "good morning" from hours
     // ago). messages[] must be oldest -> newest for Anthropic.
     for (const m of (recent || [])) {
@@ -1911,7 +1911,7 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
     // Replace the last user message with an unmistakable focus marker so the
     // model responds to the actual trigger, not to older messages it finds
     // more interesting. The trigger message is the one that caused this
-    // callback to fire -- everything earlier is just history.
+    // callback to fire, everything earlier is just history.
     //
     // Applied to BOTH direct mentions AND ambient chime-ins. Ambient replies
     // that free-associated across channel history answered a DIFFERENT message
@@ -1920,7 +1920,7 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
     //
     // Nudge redirect: if the triggering message is a bare impatient nudge
     // ("answer me pls", "??"), the real question is the same person's previous
-    // substantive message -- answer THAT, not the nudge. Without this, a bot
+    // substantive message, answer THAT, not the nudge. Without this, a bot
     // replied "hey, what's up!" to "answer me pls" while the actual question
     // sat one message above, unanswered.
     if (triggerDisplayName && triggerBody) {
@@ -1933,7 +1933,7 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
           const b = (m.body || "").trim();
           if (!b || b === triggerBody.trim() || isImpatientNudge(b)) continue;
           focusBody = b;
-          nudgeNote = "They already asked this and are now waiting on you, so answer it directly -- do not just greet them. ";
+          nudgeNote = "They already asked this and are now waiting on you, so answer it directly, do not just greet them. ";
           break;
         }
       }
@@ -1942,22 +1942,22 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
       // roleplay 3/3 in repro (Wren kept answering "still blanking" while
       // holding the search tool, 2026-07-22).
       const lookupNudge =
-        ` If a real answer needs a real-world specific (a title, a name, a source, current news), run web_search FIRST and answer with the real thing plus its link -- never claim you can't remember it.`;
+        ` If a real answer needs a real-world specific (a title, a name, a source, current news), run web_search FIRST and answer with the real thing plus its link, never claim you can't remember it.`;
       messages[messages.length - 1] = {
         role: "user",
         content: nameMention
-          ? `${nudgeNote}${triggerDisplayName} is talking to you. This is the message you MUST respond to:\n\n"${focusBody.slice(0, 500)}"\n\n(History above is just context. Answer ${triggerDisplayName} directly. If they asked a question, ANSWER it -- do not deflect with a greeting. If they greeted you, greet back.${lookupNudge})`
-          : `${nudgeNote}React to THIS specific message ${triggerDisplayName} just posted:\n\n"${focusBody.slice(0, 500)}"\n\n(The messages above are older context. Do NOT answer or react to an earlier message, an old clip, or a GIF that scrolled by -- respond to what ${triggerDisplayName} just said here.${lookupNudge})`,
+          ? `${nudgeNote}${triggerDisplayName} is talking to you. This is the message you MUST respond to:\n\n"${focusBody.slice(0, 500)}"\n\n(History above is just context. Answer ${triggerDisplayName} directly. If they asked a question, ANSWER it, do not deflect with a greeting. If they greeted you, greet back.${lookupNudge})`
+          : `${nudgeNote}React to THIS specific message ${triggerDisplayName} just posted:\n\n"${focusBody.slice(0, 500)}"\n\n(The messages above are older context. Do NOT answer or react to an earlier message, an old clip, or a GIF that scrolled by, respond to what ${triggerDisplayName} just said here.${lookupNudge})`,
       };
     }
 
     // GIF vision. The watercooler pipeline is otherwise text-only, so a Giphy/
     // Tenor GIF posted in the channel reaches the model only as a
-    // "[GIF image: <url>]" annotation -- the bot reads a URL but never SEES the
+    // "[GIF image: <url>]" annotation, the bot reads a URL but never SEES the
     // image, so it bluffs (e.g. "Donald Duck" for a Gordon Ramsay GIF).
     //
     // Attach ONLY the most-recent GIF, so the bot reacts to the one the
-    // conversation is actually about -- not an older GIF scrolled up in the
+    // conversation is actually about, not an older GIF scrolled up in the
     // channel (which made bots answer about stale GIFs, or confabulate from
     // ambient channel chatter when asked "what is in this GIF?").
     //  - If the trigger message itself carries a GIF, that's the subject.
@@ -1965,12 +1965,12 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
     //    for the most-recent GIF. The common real pattern is: someone posts a
     //    GIF, then a SEPARATE message asking about it ("@bot what's in this?").
     //    The GIF is not in the trigger text, so checking only the trigger (or
-    //    only the single newest message) misses it entirely -- which is exactly
+    //    only the single newest message) misses it entirely, which is exactly
     //    why the bot kept saying "I can't see GIFs" to a GIF posted a message
     //    earlier.
     //  - How far back depends on engagement, to keep the old anti-stale-caption
     //    guard for pure ambient chatter:
-    //      * Direct engagement (nameMention -- a mention, name, or active
+    //      * Direct engagement (nameMention, a mention, name, or active
     //        back-and-forth): the person is explicitly asking, so scan back a
     //        few messages for the GIF they mean.
     //      * Pure ambient chime-in: only treat a GIF as the subject if it is
@@ -2004,11 +2004,11 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
 
     // GIF was present but we could not load the image bytes (unsupported host,
     // JS-rendered share page, oversized, or transient fetch failure). The bot
-    // must NOT announce "I cannot view the GIF at that link" -- that breaks the
+    // must NOT announce "I cannot view the GIF at that link", that breaks the
     // human feel (it is what made Courtney narrate a fetch failure out loud).
     //  - Ambient: a coworker who can't load a GIF just doesn't comment. Skip.
     //  - Mention: stay responsive, but react like a person whose preview did
-    //    not load -- never claim to see it, never narrate the failure.
+    //    not load, never claim to see it, never narrate the failure.
     const gifUnviewable = focusGifUrls.length > 0 && wcGifBlocks.length === 0;
     if (gifUnviewable && !nameMention) {
       console.warn(`[watercooler] ${config.botName} ambient GIF unviewable, skipping chime-in`);
@@ -2020,7 +2020,7 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
         lastMsg.content +=
           `\n\n[They shared an image you could not load. Do NOT describe it, claim to see it, ` +
           `or say you cannot view it / that the link is broken. If their message is ONLY the image, ` +
-          `react like a person whose preview did not load -- one short, warm, curious line ` +
+          `react like a person whose preview did not load, one short, warm, curious line ` +
           `("ha what is that" or "you cannot just send that with no caption"). Otherwise just answer ` +
           `the rest of what they said.]`;
       }
@@ -2031,10 +2031,10 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
       const lastText = typeof lastMsg.content === "string" ? lastMsg.content : "";
       const focusNote =
         `${lastText}\n\n[A GIF is attached above and it is part of the message you are replying to. ` +
-        `React to it the way a coworker would in chat -- riff on it, joke, one quick natural line -- ` +
+        `React to it the way a coworker would in chat, riff on it, joke, one quick natural line, ` +
         `grounded in what you actually SEE. Do NOT narrate or caption the image ("looks like a robot ` +
         `pointing at its head"); a person reacts, they don't describe. Only if someone explicitly asks ` +
-        `what it is should you describe it, and then ONLY from what you see -- never guess from earlier ` +
+        `what it is should you describe it, and then ONLY from what you see, never guess from earlier ` +
         `channel chatter or what you remember people talking about.]`;
       lastMsg.content = [...wcGifBlocks, { type: "text", text: focusNote }];
     }
@@ -2057,7 +2057,7 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
       response = await callAnthropic(env, fullSystemPrompt, messages, wcCallOpts);
     } catch (err) {
       // An oversized / animated / unsupported GIF can make Anthropic reject the
-      // multimodal call. The bot is now blind to the image -- it must NOT fall
+      // multimodal call. The bot is now blind to the image, it must NOT fall
       // back to announcing "can't load that one on my end" (the human-illusion
       // tell that kicked off this whole thread).
       if (wcGifBlocks.length === 0) throw err;
@@ -2125,7 +2125,7 @@ async function runWatercoolerPipeline({ env, channel_slug, config, nameMention, 
       // 5+ word phrase with any OTHER bot's recent message.
       //
       // ONLY applies to pure ambient chime-ins. When this bot is engaged
-      // (nameMention -- a direct @mention, a name mention, OR an active
+      // (nameMention, a direct @mention, a name mention, OR an active
       // back-and-forth, all of which set nameMention=true upstream) it must
       // stay engaged until the human stops; silently dropping a directly-
       // addressed reply because a sibling happened to use a similar phrase
@@ -2203,7 +2203,7 @@ async function handleChatMessageInner(request, env, ctx, config) {
   // Inbound HMAC secret comes from callbackSecretEnvVar when set (modern
   // two-secret pattern: callbackSecret inbound + nexusKey outbound), or
   // falls back to nexusKeyEnvVar (legacy single-secret pattern used by
-  // robert-worker -- ROBERT_NEXUS_KEY does double duty there).
+  // robert-worker, ROBERT_NEXUS_KEY does double duty there).
   const inboundSecretEnvVar = config.callbackSecretEnvVar || config.nexusKeyEnvVar;
   const secret = env[inboundSecretEnvVar];
   const authorized = await verifyNexusSignature(secret, rawBody, request.headers);
@@ -2234,7 +2234,7 @@ async function handleChatMessageInner(request, env, ctx, config) {
     // fleet-relay authority downgrade (Gate 2): a turn triggered by another
     // bot runs against a default-deny tool allowlist, never the full set.
     // Absent on older nexus-app builds, in which case the bot_ id prefix is
-    // the fallback -- but the explicit flag is authoritative when present.
+    // the fallback, but the explicit flag is authoritative when present.
     author_is_bot,
     // FleetView dispatch (fleet.blackravenit.com). Absent on Nexus traffic,
     // which keeps the default "nexus" delivery path. See lib/fleetviewDelivery.js.
@@ -2277,12 +2277,12 @@ async function handleChatMessageInner(request, env, ctx, config) {
   let userText = stripMention(msgBody || "", config.botName);
   if (!userText) {
     if (hasAttachments) {
-      userText = "(no caption -- please read the attached files)";
+      userText = "(no caption, please read the attached files)";
     } else if (trigger_type === "mention") {
       // A bare @mention with no other text is a "catch up and act" ping.
       // Dispatch anyway and tell the LLM to read the recent channel messages
-      // -- the user pinged to point at what they just said, not to say nothing.
-      userText = "(I was @-mentioned with no other text -- read the recent messages in this channel and act on what was just asked.)";
+      //, the user pinged to point at what they just said, not to say nothing.
+      userText = "(I was @-mentioned with no other text, read the recent messages in this channel and act on what was just asked.)";
     } else {
       return json({ success: false, error: "Empty message after stripping mention" }, 400);
     }
@@ -2314,7 +2314,7 @@ async function handleChatMessageInner(request, env, ctx, config) {
     const handler = mergedHandlers[verb];
     if (handler) {
       // Channel ownership / explicit-address gate:
-      //   1. trigger_type==="mention" -- user @-mentioned THIS bot explicitly,
+      //   1. trigger_type==="mention", user @-mentioned THIS bot explicitly,
       //      so they clearly want this bot to handle the !cmd no matter the
       //      channel. (Only the mentioned bot receives a "mention" callback,
       //      so this doesn't cause duplicate replies from other ambient bots.)
@@ -2334,14 +2334,14 @@ async function handleChatMessageInner(request, env, ctx, config) {
         channel_slug.startsWith(`${botName}-`) ||
         extra.includes(channel_slug);
       if (!ownsChannel) {
-        console.log(`[${botName}] skipping !${verb} in ${channel_slug} -- channel not owned`);
+        console.log(`[${botName}] skipping !${verb} in ${channel_slug}, channel not owned`);
         return new Response(JSON.stringify({ ok: true, skipped: "channel_not_owned", verb, channel_slug }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
       }
       // Bot display name drives the bangReport title line. Per-row colors
-      // were removed 2026-05-17 -- the renderer paints left-border from
+      // were removed 2026-05-17, the renderer paints left-border from
       // msg.provenance, not from anything the bot computes.
       const botDisplayName = config.persona?.displayName || config.botName || "Bot";
 
@@ -2352,7 +2352,7 @@ async function handleChatMessageInner(request, env, ctx, config) {
        * (the "Dexter !status" look). Subsequent replies in the same
        * dispatch post raw so the title line doesn't repeat. The renderer
        * paints the left-border accent from msg.provenance (user-command =
-       * green) -- the bot does not pick a color here.
+       * green): the bot does not pick a color here.
        *
        * Handlers can pass { embed: false } as a legacy escape hatch to
        * emit raw text bypassing the bangReport wrap. Pre-2026-05-17 callers
@@ -2379,7 +2379,7 @@ async function handleChatMessageInner(request, env, ctx, config) {
           } else if (isFirstReply) {
             const trimmed = body.trimStart();
             if (trimmed.startsWith("```")) {
-              // Handler already produced a bangReport -- emit verbatim.
+              // Handler already produced a bangReport, emit verbatim.
               finalText = body;
             } else {
               finalText = bangReport({
@@ -2406,7 +2406,7 @@ async function handleChatMessageInner(request, env, ctx, config) {
       };
       // Run the command handler in ctx.waitUntil so the HTTP response
       // returns 202 immediately. Commands like !device-count call external
-      // APIs (Ninja, Pax8) and post multiple messages -- total wall time
+      // APIs (Ninja, Pax8) and post multiple messages, total wall time
       // can exceed Nexus's 8-second inbound fetch timeout. Returning 202
       // before the handler runs prevents Nexus from aborting and
       // potentially re-dispatching the callback, which was causing
@@ -2464,7 +2464,7 @@ async function handleChatMessageInner(request, env, ctx, config) {
   // ---- 7a. Watercooler routing (casual persona; bypass full memory/tool pipeline)
   // The watercooler is an off-the-clock channel. BOTH probabilistic ambient
   // chime-ins AND direct @mentions are handled by the lightweight persona
-  // pipeline here -- NOT the standard LLM pipeline. This keeps cross-surface
+  // pipeline here, NOT the standard LLM pipeline. This keeps cross-surface
   // work memory (durable facts + old chat/voice/phone turns) and the tool loop
   // out of casual banter: a bot pinged in the watercooler chats like a coworker
   // and defers real job tasks to a work channel. Routing mentions through the

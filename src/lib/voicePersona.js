@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/voicePersona.js -- one brain for chat and voice
+// lib/voicePersona.js, one brain for chat and voice
 //
 // Serves the bot's REAL chat persona, rendered for speech, over
 // GET /api/internal/voice-persona so the nexus-app voice pipeline can stop

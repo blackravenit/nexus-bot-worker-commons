@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/hitlCard.js -- canonical HITL approval card builder.
+// lib/hitlCard.js, canonical HITL approval card builder.
 //
 // Single fleet entry point for the "human, decide this" surface. Renders the
 // FLEET_OUTPUT_STYLE.md template (## title with optional severity pill,
@@ -193,7 +193,7 @@ export async function postHitlCard(env, params = {}) {
  * Pure markdown renderer for the canonical HITL card. Exported so tests +
  * the healer can compare expected output to a captured post.
  *
- * @param {object} opts -- same shape as postHitlCard params (visual subset)
+ * @param {object} opts, same shape as postHitlCard params (visual subset)
  * @returns {string}
  */
 export function renderHitlCard({
@@ -321,7 +321,7 @@ function _resolveButtons(btnsRaw, ctx) {
     const verb = (typeof b === "string" ? b : b?.verb || "").toLowerCase();
     const spec = BUTTON_LABELS[verb];
     if (!spec) {
-      console.warn(`[postHitlCard] unknown button verb "${verb}" -- skipping`);
+      console.warn(`[postHitlCard] unknown button verb "${verb}", skipping`);
       return null;
     }
     const label = (typeof b === "object" && b.label) || spec.label;

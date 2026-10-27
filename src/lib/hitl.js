@@ -44,7 +44,7 @@ function resolveWorkerBase(env, options) {
   if (!raw) return "";
   // Normalise to the bare origin. Some bots set this var to the FULL
   // button-click URL (e.g. ".../api/internal/button-click"), and callers append
-  // their own path -- without this, the path doubles and the callback 404s.
+  // their own path, without this, the path doubles and the callback 404s.
   try {
     return new URL(raw).origin;
   } catch {
@@ -99,7 +99,7 @@ export async function postApprovalCard(env, params, options = {}) {
     const descText = summary || action.description || "No description provided.";
 
     const cardLines = [
-      `## SOC Response Action -- Pending Approval \`${riskLabel}\``,
+      `## SOC Response Action, Pending Approval \`${riskLabel}\``,
       `*Operation: \`${opLabel}\`*`,
       ``,
       `- **Requested by:** ${requesterUserId || "unknown"}`,
@@ -181,7 +181,7 @@ export async function postApprovalCard(env, params, options = {}) {
 
   const msg = await postToNexus(env, approvalSlug, cardBody, nexusOptions);
   if (!msg || !msg.id) {
-    console.warn("[hitl] legacy: postToNexus returned no message id -- cannot attach buttons");
+    console.warn("[hitl] legacy: postToNexus returned no message id, cannot attach buttons");
     return `Approval card queued (Nexus unavailable). Incident ID: \`${incidentId}\`. Contact ops to resolve manually.`;
   }
 
@@ -200,7 +200,7 @@ export async function postApprovalCard(env, params, options = {}) {
     },
   ], nexusOptions);
 
-  return `Pending approval -- Incident ID \`${incidentId}\` posted to ${approvalSlug}. Waiting for human authorization.`;
+  return `Pending approval, Incident ID \`${incidentId}\` posted to ${approvalSlug}. Waiting for human authorization.`;
 }
 
 /**

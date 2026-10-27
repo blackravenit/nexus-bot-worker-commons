@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/researchShare.js -- web-search-grounded watercooler shares
+// lib/researchShare.js, web-search-grounded watercooler shares
 //
 // Why this exists: the fleet's ambient watercooler posts were pure
 // confabulation. The prompts said "write something you've been listening to"

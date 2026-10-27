@@ -271,14 +271,14 @@ export async function handleSelfReviewLoopClick(env, payload, cfg) {
     const res = await cfg.execute(env, row);
     if (!res || !res.ok) {
       await markResolved(db, cfg.table, id, "failed", res?.error || "execute failed");
-      await post(`${cfg.botName}: approved by ${who}, but the action failed -- ${res?.error || "unknown"}. Nothing applied.`);
+      await post(`${cfg.botName}: approved by ${who}, but the action failed, ${res?.error || "unknown"}. Nothing applied.`);
       return { handled: true };
     }
     await markResolved(db, cfg.table, id, "executed", res.message || "done");
     await post(`${cfg.botName}: done. ${who} approved my recommendation, so I ${res.message}`);
   } catch (err) {
     await markResolved(db, cfg.table, id, "failed", err.message);
-    await post(`${cfg.botName}: approved but hit an error applying it -- ${err.message}. Nothing applied.`);
+    await post(`${cfg.botName}: approved but hit an error applying it, ${err.message}. Nothing applied.`);
   }
   return { handled: true };
 }

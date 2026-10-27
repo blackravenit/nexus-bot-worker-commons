@@ -5,8 +5,8 @@
 // the three banned dash forms and exits non-zero on any hit, so a regression
 // fails `npm test` before it ever ships:
 //   1. literal em dash (U+2014) or en dash (U+2013), anywhere in the file
-//   2. spaced double-hyphen pause (" -- ") outside fenced code blocks
-//   3. unspaced letter-to-letter double-hyphen ("alpha--beta") outside fences
+//   2. a spaced double-hyphen pause, outside fenced code blocks
+//   3. unspaced letter-to-letter double-hyphen ("alpha--beta") outside fences dash-ok
 //
 // Prompt files must be TOTALLY clean (comments included): everything in a
 // persona/knowledge file is either sent to the model or sitting one refactor

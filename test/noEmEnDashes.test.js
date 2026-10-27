@@ -10,10 +10,12 @@
 // string that really was sent to the model: the "CURRENT DATE AND TIME
 // (authoritative ...)" line in handlers/handleChatMessage.js.
 //
-// So this covers the WHOLE shipped surface, for em and en dashes only. It
-// deliberately does NOT check double hyphens, which still number in the
-// hundreds here and are a separate cleanup; widening to those would turn this
-// into a permanently red test rather than a tripwire.
+// npm test now points that script at src, scripts, contracts, docs and
+// testing, so double hyphens are enforced there too and the package is clean
+// of both forms. This test stays as the belt to that script's braces: it also
+// covers .json, which the script's extension list deliberately leaves out
+// because other repos vendor it and may legitimately carry an argument
+// separator in a package.json script.
 //
 // test/ is excluded: the sanitizer's fixtures must contain real dash
 // characters to prove scrubFleetDashes strips them. lib/sanitize.js,

@@ -27,7 +27,7 @@ rows do not exist yet. That is not a control, it is an accident of rollout.
 
 ## Design: three gates, each one independently sufficient to stop a bad relay
 
-### Gate 1 -- routing allowlist (who may be spoken to at all)
+### Gate 1: routing allowlist (who may be spoken to at all)
 
 A single directed map in commons, next to `FLEET_CAPABILITY_MAP.md`, is the
 only source of truth for legal relay edges. Not a mesh, not derived from
@@ -66,7 +66,7 @@ only possible two-node relay loop.
 Anything not on this map is refused in code with a message that names the
 human path: "I cannot hand this to Maxwell. Ask him directly in #maxwell-finance."
 
-### Gate 1b -- #watercooler is not a relay surface
+### Gate 1b: #watercooler is not a relay surface
 
 The `watercooler` channel is personal and social. It has its own ambient
 pipeline (`commons/src/lib/watercooler.js`, per-bot `jobs/watercooler*.js`) and
@@ -82,7 +82,7 @@ Per Brian (2026-08-09) fleet relay must stay out of it, in both directions:
 Without rule 2, forty-two edges plus nine ambient watercooler crons is a fleet
 that assigns itself work while making small talk.
 
-### Gate 2 -- authority downgrade (what a bot-originated request may trigger)
+### Gate 2: authority downgrade (what a bot-originated request may trigger)
 
 The Nexus callback already carries the author: `user_id` is `bot_wren` for a
 relay and a real UUID for a human. Commons stamps `ctx.requester_is_bot` from
@@ -122,7 +122,7 @@ Recommended hardening (small nexus-app change): add an explicit
 bot infer it from a `bot_` id prefix. Inferring works today; an explicit flag
 means a future id scheme change cannot silently re-authorize every relay.
 
-### Gate 3 -- human provenance and hop limit (who may start one, and how far it goes)
+### Gate 3: human provenance and hop limit (who may start one, and how far it goes)
 
 1. **A relay may only originate inside a HUMAN turn.** No cron job, no poller,
    no webhook may relay. This is what keeps the fleet from talking to itself

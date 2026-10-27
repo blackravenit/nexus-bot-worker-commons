@@ -17,7 +17,7 @@
 //
 // Query ordering uses ORDER BY id DESC (primary key) rather than ORDER BY
 // created_at DESC, id DESC. Since id is AUTOINCREMENT it is strictly
-// monotonic -- equivalent to insertion order. Ordering by id alone lets D1
+// monotonic, equivalent to insertion order. Ordering by id alone lets D1
 // satisfy the query from the primary-key index scoped by the history_key
 // covering index, avoiding a full in-memory sort across all rows for a key.
 //
@@ -35,7 +35,7 @@ const DEFAULT_MAX_TURNS = 30;
 
 // Pruning: once a history_key accumulates more than MAX_PRUNE_THRESHOLD rows,
 // trim back to MAX_PRUNE_KEEP rows (keeping the most recent ones by id).
-// Fire-and-forget -- errors are logged but do not block the insert.
+// Fire-and-forget, errors are logged but do not block the insert.
 const MAX_PRUNE_THRESHOLD = 200;
 const MAX_PRUNE_KEEP = 150;
 
@@ -58,7 +58,7 @@ export async function loadHistory(env, historyKey, options = {}) {
   const db = env[dbKey];
 
   if (!db) {
-    console.warn(`[history] DB binding "${dbKey}" not available -- returning empty history`);
+    console.warn(`[history] DB binding "${dbKey}" not available, returning empty history`);
     return [];
   }
   try {
@@ -91,7 +91,7 @@ export async function loadHistory(env, historyKey, options = {}) {
  * Append a single conversation turn to D1.
  * After inserting, automatically prunes old rows for the key if the row count
  * exceeds MAX_PRUNE_THRESHOLD, keeping MAX_PRUNE_KEEP most-recent rows.
- * Pruning is fire-and-forget -- errors are logged but do not block the insert.
+ * Pruning is fire-and-forget, errors are logged but do not block the insert.
  * Errors are logged and swallowed.
  *
  * @param {object} env - Worker environment bindings
@@ -108,7 +108,7 @@ export async function appendHistory(env, historyKey, role, content, options = {}
   const db = env[dbKey];
 
   if (!db) {
-    console.warn(`[history] DB binding "${dbKey}" not available -- skipping append`);
+    console.warn(`[history] DB binding "${dbKey}" not available, skipping append`);
     return;
   }
   const createdAt = Math.floor(Date.now() / 1000);

@@ -24,14 +24,14 @@
 // must be supplied via the options object. postToNexus and attachButtons
 // look up the key as env[options.nexusKeyEnvVar]. When options is omitted
 // the caller should ensure env.NEXUS_KEY or env[botName + "_NEXUS_KEY"]
-// is reachable -- but the canonical path is via options.nexusKeyEnvVar.
+// is reachable, but the canonical path is via options.nexusKeyEnvVar.
 //
 // NOTE: handleChatMessage passes options automatically from config.
 // Direct callers (cron jobs) should pass { nexusKeyEnvVar: "BOT_NEXUS_KEY" }.
 //
 // Fleet error surfacing: attachButtons and editNexusMessage call
 // reportFleetError on failure. postToNexus, sendTyping, sendNexusHeartbeat,
-// and pingBotPresence do NOT -- postToNexus would recurse, the typing/
+// and pingBotPresence do NOT, postToNexus would recurse, the typing/
 // heartbeat/presence ops are high-frequency ambient calls whose failures
 // are expected noise during brief outages and must stay silent.
 // =============================================================================
@@ -737,8 +737,8 @@ export async function settleHitlCard(env, messageId, params = {}, options = {}) 
   // Atomic edit + component clear in a SINGLE PATCH (clear_components:true).
   // Server-side this rewrites the body, deletes the buttons + modal triggers,
   // then broadcasts broadcast_update followed in-order by a settled:true frame
-  // so the client cannot re-seed a stale Edit modal. The old pattern -- edit,
-  // then a separate settleMessageComponents -- fired two independent requests
+  // so the client cannot re-seed a stale Edit modal. The old pattern, edit,
+  // then a separate settleMessageComponents, fired two independent requests
   // whose broadcasts could arrive out of order: the body-edit broadcast still
   // carried the old modal rows and re-seeded a live "Edit reply" trigger on a
   // resolved card if it landed after the settle. Do NOT split these back apart.
@@ -796,7 +796,7 @@ export async function attachModals(env, messageId, modals, options = {}) {
 /**
  * Edit a Nexus message previously posted by this bot.
  * Uses PATCH /api/bot/messages/:id (Bearer auth, authorship enforced
- * server-side -- bot can only edit its own messages).
+ * server-side, bot can only edit its own messages).
  *
  * Best-effort: returns null on failure so callers in click-handlers do
  * not crash an HTTP response chain when Nexus is briefly unreachable.
@@ -869,7 +869,7 @@ export async function editNexusMessage(env, messageId, body, options = {}) {
  * insurance for error paths).
  *
  * When options.thread_id is provided, the indicator is scoped to that
- * thread's open panel only -- the main channel's typing row stays empty
+ * thread's open panel only, the main channel's typing row stays empty
  * so the bot doesn't appear to be typing in the channel when it's
  * actually replying inside a thread.
  *

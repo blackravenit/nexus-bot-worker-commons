@@ -1,10 +1,10 @@
 // =============================================================================
-// durable/LlmRoom.js -- Shared Durable Object base class for LLM tool loops.
+// durable/LlmRoom.js, Shared Durable Object base class for LLM tool loops.
 //
 // Bot worker chat-message callbacks were running the LLM pipeline inside
 // ctx.waitUntil(), which has a ~30s wall-clock ceiling. Maxwell + Courtney
 // pipelines that ingest a multimodal PDF on the current turn routinely
-// exceed that and get cancelled mid-flight -- the bot receives the
+// exceed that and get cancelled mid-flight, the bot receives the
 // callback, starts the Anthropic call, then gets killed before posting
 // back to Nexus. The user sees "bot is typing" then silence.
 //
@@ -15,7 +15,7 @@
 // loop has the full DO compute budget (CPU bounded, wall-clock bounded
 // only by DO eviction which doesn't fire while the alarm is active).
 //
-// One DO instance per (botName, historyKey) -- that gives natural
+// One DO instance per (botName, historyKey): that gives natural
 // single-flight per conversation: two rapid pings from the same user
 // queue up rather than fanning out parallel tool loops that clobber
 // chat_history on the way back. Different users get different DOs and
@@ -79,7 +79,7 @@ export class LlmRoomBase {
   }
 
   /**
-   * fetch handler. Only one route: POST /run -- enqueues a job and
+   * fetch handler. Only one route: POST /run, enqueues a job and
    * arms an alarm to process it. Returns 202 immediately so the
    * caller's waitUntil completes well under the 30s ceiling.
    *
@@ -115,7 +115,7 @@ export class LlmRoomBase {
       const recentIds = (await this.state.storage.get(RECENT_IDS_KEY)) || [];
       const inQueue = queue.some((j) => j && j.message_id === msgId);
       if (recentIds.includes(msgId) || inQueue) {
-        console.log(`[LlmRoom] duplicate message_id ${msgId} -- skipping (already ${inQueue ? "queued" : "processed"})`);
+        console.log(`[LlmRoom] duplicate message_id ${msgId}, skipping (already ${inQueue ? "queued" : "processed"})`);
         return new Response(JSON.stringify({ duplicate: true, skipped: true }), {
           status: 200,
           headers: { "content-type": "application/json" },
@@ -127,7 +127,7 @@ export class LlmRoomBase {
     }
 
     if (queue.length >= QUEUE_DEPTH_CAP) {
-      console.warn(`[LlmRoom] queue full (${queue.length}) -- dropping job`);
+      console.warn(`[LlmRoom] queue full (${queue.length}): dropping job`);
       return new Response(JSON.stringify({ error: "Queue full" }), {
         status: 503,
         headers: { "content-type": "application/json" },

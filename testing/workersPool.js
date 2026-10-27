@@ -1,8 +1,8 @@
 // =============================================================================
-// testing/workersPool.js -- builds the @cloudflare/vitest-pool-workers options
+// testing/workersPool.js, builds the @cloudflare/vitest-pool-workers options
 // object for a bot's e2e tier. Returns a PLAIN object only; it deliberately does
 // NOT import the pool plugin or vitest, because this file lives in the commons
-// package and is consumed by bots through a file: symlink -- a bare import of
+// package and is consumed by bots through a file: symlink, a bare import of
 // `@cloudflare/vitest-pool-workers` here would resolve from commons' own
 // node_modules (where it isn't installed), not the bot's. The bot's
 // vitest.workers.config.js imports `cloudflareTest` from its OWN node_modules

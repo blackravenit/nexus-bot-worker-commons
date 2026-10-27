@@ -34,7 +34,7 @@ export async function rememberFact(env, userId, text, options = {}) {
   const db = env[dbKey];
 
   if (!db) {
-    console.warn(`[memory] DB binding "${dbKey}" not available -- skipping rememberFact`);
+    console.warn(`[memory] DB binding "${dbKey}" not available, skipping rememberFact`);
     return null;
   }
   const createdAt = Math.floor(Date.now() / 1000);
@@ -66,7 +66,7 @@ export async function forgetFact(env, userId, text, options = {}) {
   const db = env[dbKey];
 
   if (!db) {
-    console.warn(`[memory] DB binding "${dbKey}" not available -- skipping forgetFact`);
+    console.warn(`[memory] DB binding "${dbKey}" not available, skipping forgetFact`);
     return 0;
   }
   const pattern = `%${text.trim()}%`;
@@ -96,7 +96,7 @@ export async function listFacts(env, userId, options = {}) {
   const db = env[dbKey];
 
   if (!db) {
-    console.warn(`[memory] DB binding "${dbKey}" not available -- returning empty facts`);
+    console.warn(`[memory] DB binding "${dbKey}" not available, returning empty facts`);
     return [];
   }
   try {

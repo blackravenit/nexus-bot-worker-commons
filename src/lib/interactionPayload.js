@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/interactionPayload.js -- canonical parser for inbound Nexus
+// lib/interactionPayload.js, canonical parser for inbound Nexus
 // button-click and modal-submit callbacks.
 //
 // Nexus sends two callback shapes:
@@ -30,7 +30,7 @@
 /**
  * Normalize a Nexus button-click or modal-submit callback payload.
  *
- * Never throws on malformed shapes -- missing fields become empty strings
+ * Never throws on malformed shapes, missing fields become empty strings
  * or null so handler code can branch without try/catch.
  *
  * @param {any} raw

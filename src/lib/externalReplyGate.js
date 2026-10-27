@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/externalReplyGate.js -- Shared "external mail gets a HITL draft" gate.
+// lib/externalReplyGate.js, Shared "external mail gets a HITL draft" gate.
 //
 // Brian 2026-06-05: every email to every bot should surface a HITL draft so no
 // inbox needs manual checking. Bots whose mail pollers auto-reply to internal
@@ -109,7 +109,7 @@ function renderCard({ botName, inbound, cc, draftText }) {
   return buildReport({
     botName,
     emoji: "📨",
-    title: "External Email -- Reply Draft",
+    title: "External Email, Reply Draft",
     subtitle: "Awaiting review. Nothing sends until you open Edit reply and send.",
     sections: [
       {
@@ -146,7 +146,7 @@ function legacyCardBody(pending) {
   return buildReport({
     botName: pending?.botName || "",
     emoji: "📨",
-    title: "External Email -- Reply Draft",
+    title: "External Email, Reply Draft",
     subtitle: "Rebuilt from storage. This card was staged before card bodies were persisted.",
     sections: [{
       emoji: "↩️",

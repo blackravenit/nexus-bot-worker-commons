@@ -14,7 +14,7 @@
 // Cache strategy. FOUR breakpoints, which is the API maximum:
 //   1. System prompt, on the stable segments only.
 //   2. Last tool definition, if tools present.
-//   3. Last ASSISTANT message -- the newest byte-stable position in the array.
+//   3. Last ASSISTANT message, the newest byte-stable position in the array.
 //   4. Last message, so this turn extends the cache.
 //
 // Nothing that changes between turns may sit in `system`. The cache prefix is
@@ -30,7 +30,7 @@
 //
 //     net = 0.9 * read - 0.25 * write5m - 1.00 * write1h
 //
-// Break-even is w:r < 3.60 on 5m but w:r < 0.90 on 1h -- a 4x tighter bar. Over
+// Break-even is w:r < 3.60 on 5m but w:r < 0.90 on 1h, a 4x tighter bar. Over
 // 2026-08-09..15 the fleet ran w:r 0.81 and the cache EARNED $17.35 on a $52.19
 // spend. Repricing that same traffic on 1h needs ~39% of writes to convert into
 // reads just to match 5m, and the measured turn-gap distribution puts only ~26%
@@ -342,7 +342,7 @@ function extractText(data) {
 
 /**
  * Call the Anthropic Messages API and return the assistant response text.
- * No tool-use loop -- use callAnthropicWithTools for that.
+ * No tool-use loop, use callAnthropicWithTools for that.
  *
  * @param {object} env - Worker environment bindings
  * @param {string} systemPrompt - Full system prompt text
@@ -598,7 +598,7 @@ export async function callAnthropicWithTools(env, systemPrompt, messages, tools,
     if (iterations > toolIterationCap) {
       // The model still wants tools but has spent its budget. Breaking here
       // leaves `response` holding only tool_use blocks, so extractText() returns
-      // "" and the caller posts nothing -- the user watches the typing indicator
+      // "" and the caller posts nothing, the user watches the typing indicator
       // resolve to silence. Instead, feed the pending tool_use blocks a
       // "budget exhausted" result and make ONE final call with tool_choice
       // "none" so the model MUST answer in plain text from what it has.

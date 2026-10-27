@@ -1,5 +1,5 @@
 // =============================================================================
-// reportPrompt.js -- shared LLM prompt builder for fleet "house style" reports.
+// reportPrompt.js, shared LLM prompt builder for fleet "house style" reports.
 //
 // Every bot that generates a narrative briefing/digest with an LLM (Robert's
 // CISO brief, Wren's evening/weekly recaps, Moxie's analytics analysis, etc.)
@@ -69,7 +69,7 @@ export function buildReportPrompt(opts = {}) {
     const shape = kind === "bullets"
       ? 'bullets of the form "- **Lead term:** detail"'
       : "1-3 full sentences in an executive voice";
-    const hint = sec.hint ? ` -- ${sec.hint}` : "";
+    const hint = sec.hint ? `: ${sec.hint}` : "";
     const bulletPrefix = multiSection && !emoji ? "• " : "";
     return `${emoji}**${bulletPrefix}${sec.title}**\n(${shape}${hint})`;
   });

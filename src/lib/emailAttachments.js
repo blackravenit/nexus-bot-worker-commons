@@ -1,11 +1,11 @@
 // =============================================================================
-// lib/emailAttachments.js -- Turn a Microsoft Graph message's attachments into
+// lib/emailAttachments.js, Turn a Microsoft Graph message's attachments into
 // Anthropic content blocks so every fleet bot can actually READ what was sent,
 // not just the email body.
 //
 // Why this exists: bots polled / read mailboxes but only ever saw body text.
 // When Brian forwarded a DMARC aggregate report to Dexter and Robert, neither
-// could open it -- a DMARC report is an XML file, almost always shipped GZIP'd
+// could open it, a DMARC report is an XML file, almost always shipped GZIP'd
 // (`...xml.gz`) or ZIP'd, which nothing in the fleet decompressed.
 //
 // This module is mailbox-client-agnostic. Each bot's mail lib (mailbox.js /

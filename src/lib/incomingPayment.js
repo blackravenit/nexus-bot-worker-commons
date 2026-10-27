@@ -5,7 +5,7 @@
 // is a CUSTOMER paying US (money in) and must NEVER become an ACCPAY vendor bill
 // or be forwarded to Maxwell's AP inbox. This guard is the single source of
 // truth shared by Wren's vendor-bill forwarder AND Maxwell's ap-inbox monitor
-// (previously two drifting per-bot copies -- the drift is exactly why a client's
+// (previously two drifting per-bot copies, the drift is exactly why a client's
 // Biller Genie receipt slipped through twice: 2026-06-03 and 2026-06-04).
 //
 // Discriminator priority:
@@ -19,7 +19,7 @@
 //      received a payment / customer payment received / has paid your invoice).
 //
 // NOTE: we deliberately do NOT match generic "payment received / thank you for
-// your payment / your card was charged" phrasing -- a VENDOR's paid-receipt says
+// your payment / your card was charged" phrasing, a VENDOR's paid-receipt says
 // the same thing and we DO want those booked (the auto-pay receipt flow). The
 // sender is the safe discriminator; phrasing is not.
 // =============================================================================

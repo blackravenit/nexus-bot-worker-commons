@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/avatarPersona.js -- the local-first brain for the live avatar surface
+// lib/avatarPersona.js, the local-first brain for the live avatar surface
 //
 // The live video tile (fleet-video) is a latency-critical surface: every tool
 // round trip is seconds of a face staring silently at the caller. So unlike

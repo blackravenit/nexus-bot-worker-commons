@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/sanitize.js -- fleet-wide content sanitizers.
+// lib/sanitize.js, fleet-wide content sanitizers.
 //
 // Single source of truth for output normalization rules that apply across
 // every bot surface (Nexus posts, Graph email, voice TTS prompts, social
@@ -46,10 +46,10 @@ function scrubDashProse(segment) {
  *     "alpha, beta" (not "alpha ,  beta").
  *   - En-dash (and &ndash; / &#8211; / &#x2013;): becomes "-" (ranges read
  *     fine either way).
- *   - Spaced double-hyphen pause ("alpha -- beta"): becomes ", ".
+ *   - Spaced double-hyphen pause ("alpha, beta"): becomes ", ".
  *   - Unspaced double-hyphen between digits ("2024--2025"): becomes a single
  *     hyphen (a range, not a pause).
- *   - Unspaced double-hyphen between letters ("alpha--beta"): becomes ", ".
+ *   - Unspaced double-hyphen between letters ("alpha--beta"): becomes ", ". dash-ok
  *   - Adjacent commas from chained replacements are collapsed.
  *
  * Never rewritten (functional double hyphens):
@@ -79,7 +79,7 @@ export function scrubFleetDashes(text) {
 }
 
 // -----------------------------------------------------------------------------
-// Warn-only detectors. These do not rewrite -- they return booleans that
+// Warn-only detectors. These do not rewrite, they return booleans that
 // callers (postToNexus) can use to flag non-conformant outbound text.
 // -----------------------------------------------------------------------------
 
@@ -140,7 +140,7 @@ export function detectFreelanceEmoji(text) {
 /**
  * True if a line that looks like a bot-authored header is written as
  * bare ALL-CAPS (e.g. "OPEN TICKETS:"). The style guide section 2 forbids
- * this -- use a numbered emoji+bold section line ("<emoji> **1. Title**") instead.
+ * this, use a numbered emoji+bold section line ("<emoji> **1. Title**") instead.
  *
  * Heuristic: a standalone line that is 3+ words, all-uppercase with at most
  * one trailing colon, and not a fenced-block marker.

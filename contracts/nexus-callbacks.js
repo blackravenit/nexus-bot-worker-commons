@@ -1,5 +1,5 @@
 // =============================================================================
-// contracts/nexus-callbacks.js -- the versioned Nexus <-> bot wire contract.
+// contracts/nexus-callbacks.js, the versioned Nexus <-> bot wire contract.
 //
 // Single source of truth for the payload shapes Nexus POSTs to a bot worker's
 // /api/internal/* callback routes. Validators are pure functions returning an
@@ -10,7 +10,7 @@
 //
 // Hard rule (do not "fix"): modal-submit carries submitted field values under
 // `values` (an object map), NOT `fields`. A consumer that reads `fields`
-// silently no-ops -- the exact drift this contract exists to catch.
+// silently no-ops, the exact drift this contract exists to catch.
 // =============================================================================
 
 export const CONTRACT_VERSION = "1.0.0";
@@ -94,7 +94,7 @@ const MODAL_FIELD_TYPES = new Set(["text", "textarea", "select"]);
  * Validate a modal DEFINITION (the bot -> Nexus attach direction, distinct from
  * the modal-submit callback). This is the shape a bot sends when attaching a
  * modal to a message. Field pre-fill values belong under `value`; `default_value`
- * is silently ignored by the Nexus UI (fields render blank) -- so it is flagged
+ * is silently ignored by the Nexus UI (fields render blank): so it is flagged
  * as non-conforming, the way `fields` is on the submit side.
  * @param {object} m
  * @returns {string[]} error messages (empty === valid)
@@ -117,7 +117,7 @@ export function validateModalDefinition(m) {
       errs.push(`fields[${i}].type: must be text|textarea|select (got ${JSON.stringify(f.type)})`);
     }
     if ("default_value" in f) {
-      errs.push(`fields[${i}].default_value: not a recognised key -- use \`value\` for the prefill (Nexus ignores default_value)`);
+      errs.push(`fields[${i}].default_value: not a recognised key, use \`value\` for the prefill (Nexus ignores default_value)`);
     }
     if (f.value !== undefined && typeof f.value !== "string") {
       errs.push(`fields[${i}].value: must be a string when present`);

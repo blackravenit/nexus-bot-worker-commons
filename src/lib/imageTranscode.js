@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/imageTranscode.js -- Transcode exotic image formats into JPEG.
+// lib/imageTranscode.js, Transcode exotic image formats into JPEG.
 //
 // Anthropic vision accepts only image/png, image/jpeg, image/gif, image/webp.
 // iPhone photos (HEIC) and other raster formats (TIFF, BMP, AVIF) are common on

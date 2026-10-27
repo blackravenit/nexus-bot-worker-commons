@@ -64,7 +64,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node scripts/check-dashes.mjs src/persona-blocks && node scripts/check-empty-catch.mjs --strict src && node scripts/check-graph-send-parse.mjs src && node --import ./testing/register-md.mjs --test \"test/**/*.test.js\"",
+    "test": "node scripts/check-dashes.mjs src scripts contracts docs testing && node scripts/check-empty-catch.mjs --strict src && node scripts/check-graph-send-parse.mjs src && node --import ./testing/register-md.mjs --test \"test/**/*.test.js\"",
     "check:empty-catch": "node scripts/check-empty-catch.mjs src"
   },
   "engines": {

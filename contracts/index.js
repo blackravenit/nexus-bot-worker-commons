@@ -1,5 +1,5 @@
 // =============================================================================
-// contracts/index.js -- barrel for the versioned Nexus <-> bot wire contract.
+// contracts/index.js, barrel for the versioned Nexus <-> bot wire contract.
 //
 // Import surface for all three repos:
 //   - maxwell-worker (Vitest):     import { ..., fixtures } from "nexus-bot-worker-commons/contracts"
@@ -7,7 +7,7 @@
 //   - nexus-app/sim (node, ESM):   import { ... } from "../../nexus-bot-worker-commons/contracts/index.js"
 //
 // Sign fixtures at test time with signCallback from
-// "nexus-bot-worker-commons/lib/callbackSign" -- never commit a pre-signed body.
+// "nexus-bot-worker-commons/lib/callbackSign", never commit a pre-signed body.
 // =============================================================================
 
 export {

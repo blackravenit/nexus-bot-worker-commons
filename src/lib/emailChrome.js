@@ -1,4 +1,4 @@
-// emailChrome.js -- the fleet's bulletproof email layout primitives.
+// emailChrome.js, the fleet's bulletproof email layout primitives.
 //
 // WHY THIS EXISTS
 //

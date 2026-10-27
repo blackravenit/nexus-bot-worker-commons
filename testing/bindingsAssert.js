@@ -1,5 +1,5 @@
 // =============================================================================
-// testing/bindingsAssert.js -- assert a bot worker booted with its base
+// testing/bindingsAssert.js, assert a bot worker booted with its base
 // bindings inside the pool. Throws on failure (the caller's vitest `it(...)`
 // turns the throw into a failed test) so this file imports no test framework.
 // =============================================================================

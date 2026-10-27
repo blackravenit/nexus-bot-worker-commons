@@ -1,4 +1,4 @@
-// lib/brand.js -- the single source of truth for Black Raven's visual identity.
+// lib/brand.js, the single source of truth for Black Raven's visual identity.
 //
 // Every client-facing surface in the fleet (ticket mail, e-signature requests,
 // newsletters, client reports, support portals, one-pagers) used to carry its

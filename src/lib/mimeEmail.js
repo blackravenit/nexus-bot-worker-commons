@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/mimeEmail.js -- MIME email builder + Graph MIME upload sender.
+// lib/mimeEmail.js, MIME email builder + Graph MIME upload sender.
 //
 // Builds proper multipart/alternative messages with text/plain + text/html
 // parts and explicit charset declarations. Sends via Graph's MIME upload

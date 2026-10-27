@@ -1,11 +1,11 @@
 // =============================================================================
-// lib/officeText.js -- Zero-dependency Word/Excel text extraction for Workers.
+// lib/officeText.js, Zero-dependency Word/Excel text extraction for Workers.
 //
 // Anthropic's Messages API has no native reader for .docx / .xlsx, so we crack
 // the OOXML container ourselves and hand Claude the text as a plain `text`
 // block. .docx and .xlsx are ZIP archives of XML parts; we read the ZIP central
 // directory by hand and inflate each part with the runtime's built-in
-// DecompressionStream("deflate-raw"). No npm deps -- keeps commons'
+// DecompressionStream("deflate-raw"). No npm deps, keeps commons'
 // "Workers globals only" contract.
 //
 // What we extract:

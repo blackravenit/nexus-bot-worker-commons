@@ -1,9 +1,9 @@
 // =============================================================================
-// ReminderDOBase -- Durable Object base class that replaces every-minute
+// ReminderDOBase, Durable Object base class that replaces every-minute
 // reminder polling with exact-time Cloudflare DO Alarms.
 //
 // The OLD pattern (`* * * * *` cron + scan D1 for due rows) wasted ~1440
-// invocations/day per bot to do "fired:0,errors:0" -- 99% of the captured QA
+// invocations/day per bot to do "fired:0,errors:0", 99% of the captured QA
 // noise pre-Batch-1.1. The NEW pattern:
 //
 //   1. When a reminder is inserted into D1, the create-tool also calls
@@ -94,7 +94,7 @@ export class ReminderDOBase {
   async _bootstrap() {
     const next = await this.getDueAt(this.env);
     if (next === null || next === undefined) {
-      // No pending reminders -- explicitly clear any stale alarm.
+      // No pending reminders, explicitly clear any stale alarm.
       await this.state.storage.deleteAlarm();
       return;
     }
@@ -107,7 +107,7 @@ export class ReminderDOBase {
   /**
    * Called by Cloudflare when the alarm time arrives. Fires due reminders
    * via the subclass, then recomputes the next alarm. Errors do not abort
-   * the rescheduling step -- a broken row should not stop future fires.
+   * the rescheduling step, a broken row should not stop future fires.
    */
   async alarm() {
     let res;

@@ -1,5 +1,5 @@
 // =============================================================================
-// addressedTo.js -- "is this email actually addressed to me, or am I a bystander
+// addressedTo.js, "is this email actually addressed to me, or am I a bystander
 // on someone else's conversation?"
 //
 // A sender filter is not an addressing filter. A bot that auto-replies to every

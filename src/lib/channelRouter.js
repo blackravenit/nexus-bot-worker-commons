@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/channelRouter.js -- single source of truth for HITL approval channels.
+// lib/channelRouter.js, single source of truth for HITL approval channels.
 //
 // Bots historically hardcoded their approval channel slug in each job file
 // ("maxwell-finance", "jacob-hitl", "soc-notifications"). When a routing
@@ -12,7 +12,7 @@
 //   3. Default template ({bot}-hitl)
 //
 // Client-specific routing (per-client Nexus channels) intentionally NOT
-// here -- that belongs in the CRM (clients.nexus_channel_slug, per the
+// here, that belongs in the CRM (clients.nexus_channel_slug, per the
 // dexter-worker pattern). channelRouter is HITL approval channels only.
 // =============================================================================
 

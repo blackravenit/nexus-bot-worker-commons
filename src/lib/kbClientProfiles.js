@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/kbClientProfiles.js -- Shared Client Profiles tools (KB app) for the fleet.
+// lib/kbClientProfiles.js, Shared Client Profiles tools (KB app) for the fleet.
 //
 // The KB's Client Profiles module (kb.blackravenit.com, Clients tab) is the
 // structured per-client reference store: sites, WAN/LAN networks, key
@@ -13,8 +13,8 @@
 // email, SMS, phone call, or other client-facing output.
 //
 // Split surfaces:
-//   kbProfileReadTools/Handlers  -- Robert, Dexter, Courtney (lookup + read)
-//   kbProfileWriteTools/Handlers -- Courtney ONLY (she maintains the data)
+//   kbProfileReadTools/Handlers, Robert, Dexter, Courtney (lookup + read)
+//   kbProfileWriteTools/Handlers, Courtney ONLY (she maintains the data)
 // Write tools are exported separately and imported only by Courtney's
 // registry; read-only bots never even see them.
 //

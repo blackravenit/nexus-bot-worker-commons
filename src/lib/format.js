@@ -159,7 +159,7 @@ const AZ_OFFSET_MS = 7 * 60 * 60 * 1000;
  * Canonical "today" as YYYY-MM-DD in America/Phoenix. Use this everywhere a bot
  * needs the current local date for a tool answer, dedup key, or invoice stamp.
  *
- * Never use `new Date().toISOString().slice(0, 10)` for "today" -- CF Workers
+ * Never use `new Date().toISOString().slice(0, 10)` for "today", CF Workers
  * run in UTC, so after ~5 PM AZ that returns TOMORROW. This is the regression
  * that keeps reappearing; route through here instead.
  *
@@ -464,7 +464,7 @@ export const PALETTE = Object.freeze({
   TICKET:     "🎫",
   LINK:       "🔗",
 
-  // DEPRECATED -- retained for backward compatibility with 6 known call
+  // DEPRECATED, retained for backward compatibility with 6 known call
   // sites (see git grep PALETTE.TASKS|PLANNER|WEATHER|TREND|MENTION). New
   // code must NOT use these; the healer scorecard flags any addition.
   TASKS:      "✅",

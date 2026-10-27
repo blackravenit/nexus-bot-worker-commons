@@ -96,7 +96,7 @@ export async function persistTurnPair(env, botId, { sessionId, entityId, userTex
  * Resolve or create a memory entity for a person, keyed by whichever stable
  * identifiers are known on this surface: Nexus user_id (chat), email (email
  * pollers), and/or phone (voice). The memory-worker merges by external_id, so
- * passing more than one id links them onto the SAME entity -- this is what
+ * passing more than one id links them onto the SAME entity, this is what
  * lets an email sender resolve to the entity the chat/voice surfaces built,
  * giving cross-surface recall parity. Returns the entity_id.
  *

@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/provenanceContext.js -- AsyncLocalStorage-backed provenance tagging.
+// lib/provenanceContext.js, AsyncLocalStorage-backed provenance tagging.
 //
 // Bot workers wrap their handler entry points with:
 //

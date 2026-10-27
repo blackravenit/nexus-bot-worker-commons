@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/crmCodes.js -- Shared READ-ONLY CRM client-code tools for the fleet.
+// lib/crmCodes.js, Shared READ-ONLY CRM client-code tools for the fleet.
 //
 // Every bot needs to resolve the short, all-caps client codes Brian and staff
 // use as everyday shorthand ("pull SEP's tickets", "draft a note to RHC"). The

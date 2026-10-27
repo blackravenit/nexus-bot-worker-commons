@@ -1,5 +1,5 @@
 // =============================================================================
-// emailHeader.js -- render a Graph message's envelope (From / To / Cc) into the
+// emailHeader.js, render a Graph message's envelope (From / To / Cc) into the
 // text a bot actually reads.
 //
 // Every mail surface in the fleet used to hand the model a subject line and a

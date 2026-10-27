@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/twilioSig.js -- Twilio webhook signature validation.
+// lib/twilioSig.js, Twilio webhook signature validation.
 //
 // Every inbound Twilio webhook (voice or SMS) is signed by Twilio. We
 // validate the X-Twilio-Signature header against the canonical string
@@ -14,7 +14,7 @@
 //   3. HMAC-SHA1 with the Twilio auth token as the key, base64-encode.
 //   4. Compare to X-Twilio-Signature header.
 //
-// Constant-time compare -- even though the header is base64 (so timing
+// Constant-time compare, even though the header is base64 (so timing
 // leaks via length are fixed), still don't short-circuit on byte mismatch.
 //
 // Shared across every bot worker with an inbound Twilio route (voice or
@@ -35,12 +35,12 @@ export async function verifyTwilioSignature(env, request, formParams) {
 
   const token = env.TWILIO_AUTH_TOKEN;
   if (!token) {
-    console.warn("[twilioSig] TWILIO_AUTH_TOKEN unset -- refusing to validate");
+    console.warn("[twilioSig] TWILIO_AUTH_TOKEN unset, refusing to validate");
     return false;
   }
 
   // Twilio expects the URL Twilio CALLED, not what the worker sees
-  // post-routing. Workers expose request.url verbatim -- that's the URL
+  // post-routing. Workers expose request.url verbatim, that's the URL
   // Twilio hit. No reconstruction needed.
   const url = request.url;
 

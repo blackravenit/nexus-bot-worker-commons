@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/graphJson.js -- lenient parser for Microsoft Graph success responses.
+// lib/graphJson.js, lenient parser for Microsoft Graph success responses.
 //
 // Why this exists (the 2026-08-06 Maxwell incident, and Robert's 2026-07-23
 // one before it): Graph write endpoints do NOT all return JSON on success.

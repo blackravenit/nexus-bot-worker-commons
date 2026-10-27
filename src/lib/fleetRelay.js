@@ -1,5 +1,5 @@
 // =============================================================================
-// lib/fleetRelay.js -- the fleet's only bot-to-bot handoff primitive.
+// lib/fleetRelay.js, the fleet's only bot-to-bot handoff primitive.
 //
 // A relay is NOT one bot calling another bot's API. It is one bot posting a
 // Nexus message that a second bot then acts on under ITS OWN credentials and
@@ -11,11 +11,11 @@
 // an invoice or an endpoint isolation. Four independent gates keep the second
 // case impossible, each one sufficient on its own:
 //
-//   Gate 1  routing allowlist      -- who may be spoken to at all
-//   Gate 1b watercooler bar        -- social chatter may not dispatch work
-//   Gate 2  authority downgrade    -- what a bot-originated request may trigger
+//   Gate 1  routing allowlist, who may be spoken to at all
+//   Gate 1b watercooler bar, social chatter may not dispatch work
+//   Gate 2  authority downgrade, what a bot-originated request may trigger
 //                                     (enforced in handleChatMessage, policy here)
-//   Gate 3  human origin + 1 hop   -- who may start one, and how far it travels
+//   Gate 3  human origin + 1 hop, who may start one, and how far it travels
 //
 // Nexus enforces a fifth backstop underneath all of it: a bot-to-bot mention
 // budget of 8 per channel per 10 minutes, fail-closed (message-insert.js).
@@ -28,7 +28,7 @@ import { withProvenance, getProvenanceContext } from "./provenanceContext.js";
 import { BOT_HOME_CHANNELS } from "./emailBackup.js";
 
 // -----------------------------------------------------------------------------
-// Gate 1 -- routing allowlist
+// Gate 1, routing allowlist
 // -----------------------------------------------------------------------------
 
 // The six bots that may both send and receive.
@@ -67,12 +67,12 @@ export const RELAY_FORBIDDEN_TARGETS = Object.freeze(["maxwell", "robert", "flyn
 
 // Gate 1b. #watercooler is personal and social: it has its own ambient pipeline
 // (lib/watercooler.js plus nine per-bot crons) and is hidden from provenance in
-// the UI. Relay must stay out of it in BOTH directions -- never a target, and
+// the UI. Relay must stay out of it in BOTH directions, never a target, and
 // never an origin, or small talk becomes a work-dispatch surface.
 export const RELAY_EXCLUDED_CHANNELS = Object.freeze(["watercooler"]);
 
 // -----------------------------------------------------------------------------
-// Gate 2 -- authority downgrade policy
+// Gate 2, authority downgrade policy
 // -----------------------------------------------------------------------------
 
 /**
@@ -193,7 +193,7 @@ export const RELAY_TOOL_POLICY = Object.freeze({
  * Kept separate from RELAY_TOOL_POLICY so the policy stays a flat list of tool
  * names that anyone can read at a glance. This is for the narrower case where a
  * tool is safe to relay but ONE of its arguments means "a human told me to
- * ignore a safety check" -- an argument a bot can never truthfully supply.
+ * ignore a safety check", an argument a bot can never truthfully supply.
  *
  * The stripped field is dropped, not rejected: the call still runs, it just
  * runs with the guard on, which is the behaviour a relayed request should get.
@@ -207,7 +207,7 @@ export const RELAY_INPUT_SCRUB = Object.freeze({
 /**
  * Resolve the relay tool allowlist for a receiving bot. Returns an empty array
  * for any bot with no policy entry, which means "refuse every tool" rather than
- * "allow every tool" -- the fail-safe direction.
+ * "allow every tool", the fail-safe direction.
  *
  * @param {string} selfBot - receiving bot id, e.g. "jacob"
  * @returns {string[]} allowed tool names for a bot-originated request
@@ -418,7 +418,7 @@ async function relayHandler({ input, env, ctx, self, nexusOptions }) {
   // long is a sign the bot is pasting context instead of stating a request.
   const trimmed =
     message.length > MAX_RELAY_MESSAGE_LEN
-      ? `${message.slice(0, MAX_RELAY_MESSAGE_LEN)}\n\n[truncated -- ask for the rest if you need it]`
+      ? `${message.slice(0, MAX_RELAY_MESSAGE_LEN)}\n\n[truncated, ask for the rest if you need it]`
       : message;
 
   // Gate 3c: the requesting human is carried in the envelope and rendered in
@@ -479,7 +479,7 @@ function capitalize(s) {
 }
 
 // -----------------------------------------------------------------------------
-// Gate 2 enforcement helpers -- consumed by handleChatMessage
+// Gate 2 enforcement helpers, consumed by handleChatMessage
 // -----------------------------------------------------------------------------
 
 /**

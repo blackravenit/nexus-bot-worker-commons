@@ -106,9 +106,9 @@ export function buildMemoryRecallBlock(ctx, currentSessionId, opts = {}) {
   }
   if (!lines.length) return "";
   return (
-    "\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (your shared memory across chat, voice calls, and phone calls -- " +
+    "\n\nWHAT YOU REMEMBER ABOUT THIS PERSON (your shared memory across chat, voice calls, and phone calls, " +
     "use it naturally for continuity; do NOT recite it verbatim or say you looked it up). " +
-    "Bracketed ages like [3d ago] mark how OLD each item is -- this is PAST context, not current events. " +
+    "Bracketed ages like [3d ago] mark how OLD each item is, this is PAST context, not current events. " +
     "Do NOT raise an old fact or past conversation as if it is happening now or announce it as news; " +
     "only bring it up if the person references it first or it directly answers what they just asked:\n" +
     lines.join("\n")
