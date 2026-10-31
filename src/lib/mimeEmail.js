@@ -294,13 +294,15 @@ function graphError(message, status, bodyText) {
  * @param {string} mimeString - complete RFC 5322 MIME message
  * @param {object} [opts]
  * @param {boolean} [opts.saveToSentItems=true]
+ * @param {(url: string, init: RequestInit) => Promise<Response>} [opts.fetchImpl] - replaces global fetch, so a caller can pin egress (Desk 11577)
  * @returns {Promise<{messageId: string}>}
  */
 export async function sendMimeEmail(token, mailbox, mimeString, opts = {}) {
   const mb = encodeURIComponent(mailbox);
   const mimeB64 = utf8Base64(mimeString);
+  const doFetch = opts.fetchImpl || fetch;
 
-  const draftRes = await fetch(
+  const draftRes = await doFetch(
     `${GRAPH_BASE}/users/${mb}/messages`,
     {
       method: "POST",
@@ -321,7 +323,7 @@ export async function sendMimeEmail(token, mailbox, mimeString, opts = {}) {
   const draftId = draft.id;
   if (!draftId) throw new Error("Graph MIME draft returned no id");
 
-  const sendRes = await fetch(
+  const sendRes = await doFetch(
     `${GRAPH_BASE}/users/${mb}/messages/${draftId}/send`,
     {
       method: "POST",
