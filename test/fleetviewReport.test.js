@@ -26,8 +26,8 @@ test("handler posts a signed body naming the bot", async () => {
   const calls = stubFetch(new Response(JSON.stringify({ ok: true, id: "abc" }), { status: 200 }));
   const handler = createFleetviewReportHandler("kate");
   const out = await handler({ title: "AR", request: "show ar", markdown: "# hi" }, { FLEETVIEW_DELIVERY_SECRET: SECRET });
-  assert.deepEqual(out, { ok: true, id: "abc", title: "AR", where: "FleetView Custom Reports" });
-  assert.equal(calls[0].url, "https://fleet.blackravenit.com/api/bot-reply/report");
+  assert.deepEqual(out, { ok: true, id: "abc", title: "AR", where: "Custom Reports on your page at bots.blackravenit.com" });
+  assert.equal(calls[0].url, "https://bots.blackravenit.com/api/bot-reply/report");
   const body = JSON.parse(calls[0].init.body);
   assert.equal(body.bot, "kate");
   assert.equal(body.markdown, "# hi");
@@ -35,13 +35,13 @@ test("handler posts a signed body naming the bot", async () => {
   assert.equal(await verifyNexusSignature(SECRET, calls[0].init.body, new Headers(calls[0].init.headers)), true);
 });
 
-test("FLEETVIEW_BASE_URL overrides the default", async () => {
+test("BOTS_BASE_URL overrides the default; the retired FLEETVIEW_BASE_URL is ignored", async () => {
   const calls = stubFetch(new Response(JSON.stringify({ ok: true, id: "x" }), { status: 200 }));
   await createFleetviewReportHandler("kate")(
     { title: "t", request: "r", markdown: "m" },
-    { FLEETVIEW_DELIVERY_SECRET: SECRET, FLEETVIEW_BASE_URL: "https://fv.example.com/" },
+    { FLEETVIEW_DELIVERY_SECRET: SECRET, FLEETVIEW_BASE_URL: "https://fleet.blackravenit.com", BOTS_BASE_URL: "https://bots.example.com/" },
   );
-  assert.equal(calls[0].url, "https://fv.example.com/api/bot-reply/report");
+  assert.equal(calls[0].url, "https://bots.example.com/api/bot-reply/report");
 });
 
 test("title and markdown are clamped, empty ones rejected", async () => {

@@ -87,6 +87,7 @@ export {
   injectFleetviewReport,
   shouldInjectFleetviewReport,
 } from "./lib/fleetviewReport.js";
+export { botsPageReadTool, createBotsPageReadHandler, injectBotsPageRead } from "./lib/botsPageRead.js";
 export { CHART_FENCE_GUIDE } from "./lib/reportChartSpec.js";
 export { applyVoicePronunciation } from "./lib/ttsPronunciation.js";
 export { crmReadTools, crmReadHandlers } from "./lib/crmCodes.js";

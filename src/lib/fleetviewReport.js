@@ -1,8 +1,10 @@
 // =============================================================================
 // lib/fleetviewReport.js: the `fleetview_report` tool every bot gets when it is
-// wired to FleetView (FLEETVIEW_DELIVERY_SECRET bound). The bot gathers figures
-// with its read tools, then files the finished markdown here; FleetView stores
-// it per bot and serves it on the Custom Reports page.
+// wired to the bots page (FLEETVIEW_DELIVERY_SECRET bound). The bot gathers
+// figures with its read tools, then files the finished markdown here; the bots
+// page (https://bots.blackravenit.com, raven-bots) stores it per bot and shows
+// it on the Custom Reports card. FleetView stopped storing reports at the
+// 2026-10-25 split, so posts there were refused (403) and reports were lost.
 //
 // The POST is signed exactly like a FleetView reply (signCallback over the raw
 // body, same headers, same Access service token headers).
@@ -13,19 +15,19 @@
 import { signCallback } from "./callbackSign.js";
 import { accessServiceTokenHeaders } from "./fleetviewDelivery.js";
 import { CHART_FENCE_GUIDE } from "./reportChartSpec.js";
+import { botsBaseUrl } from "./botsPageRead.js";
 
 export const FLEETVIEW_REPORT_TOOL_NAME = "fleetview_report";
 export const REPORT_TITLE_MAX = 120;
 export const REPORT_MARKDOWN_MAX = 60000;
-const DEFAULT_FLEETVIEW_URL = "https://fleet.blackravenit.com";
 const POST_TIMEOUT_MS = 15000;
-const WHERE = "FleetView Custom Reports";
+const WHERE = "Custom Reports on your page at bots.blackravenit.com";
 
 /** Tool definition handed to the model. */
 export const fleetviewReportTool = {
   name: FLEETVIEW_REPORT_TOOL_NAME,
   description:
-    "File a finished report on Brian's Custom Reports page in FleetView. Call it IN THE SAME TURN as the ask, " +
+    "File a finished report on the Custom Reports card of your page at bots.blackravenit.com. Call it IN THE SAME TURN as the ask, " +
     "after gathering the figures with your read tools. `markdown` is the full report body (headings, tables, " +
     "short notes). " + CHART_FENCE_GUIDE,
   input_schema: {
@@ -44,7 +46,7 @@ export const FLEETVIEW_REPORT_PROMPT =
   "\n\nCUSTOM REPORTS: when Brian asks for a report, table, breakdown, chart or graph, gather the figures with your " +
   "read tools, then call fleetview_report IN THE SAME TURN with the full markdown (and a chart fence when the data " +
   "is a comparison or a trend). Reply with one or two sentences of the headline numbers plus \"it is on your " +
-  "Custom Reports page in FleetView\". Never promise to file it later. " + CHART_FENCE_GUIDE;
+  "Custom Reports card on your page\". Never promise to file it later. " + CHART_FENCE_GUIDE;
 
 /**
  * Validate and clamp tool input.
@@ -71,7 +73,7 @@ export function createFleetviewReportHandler(botName) {
     if (!parsed.ok) return { ok: false, error: parsed.error };
     const secret = env?.FLEETVIEW_DELIVERY_SECRET;
     if (!secret) return { ok: false, error: "FLEETVIEW_DELIVERY_SECRET not bound" };
-    const base = (env.FLEETVIEW_BASE_URL || DEFAULT_FLEETVIEW_URL).replace(/\/$/, "");
+    const base = botsBaseUrl(env);
     const rawBody = JSON.stringify({
       bot: botName,
       title: parsed.title,
