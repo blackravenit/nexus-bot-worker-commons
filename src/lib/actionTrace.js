@@ -217,11 +217,18 @@ export function summarizeToolCall(name, input, isError = false) {
     // calendar guards (day cap, double booking). They sat outside the
     // whitelist, so a turn that overrode a guard looked identical in history to
     // one that never met it, and nobody could tell afterwards which happened.
+    //
+    // Recorded as REQUESTED, not as applied, and that wording is load bearing:
+    // on a bot-originated turn RELAY_INPUT_SCRUB strips override_conflict
+    // before the handler ever sees it, so the guard stayed on. The breadcrumb
+    // answers "did the bot ask to bypass this", which is the forensic
+    // question, without claiming the bypass took effect. The key is shape
+    // checked because it is interpolated into the note.
     for (const key of Object.keys(input)) {
       if (bypassParts.length >= 3) break;
       if (input[key] !== true) continue;
-      if (!/^(override|confirmed|force|skip)_/.test(key)) continue;
-      bypassParts.push(`${key}: true`);
+      if (!/^(?:override|confirmed|force|skip)_[a-z0-9_]{1,48}$/.test(key)) continue;
+      bypassParts.push(`requested ${key}`);
     }
   }
   const inner = joinWithinLimit(
