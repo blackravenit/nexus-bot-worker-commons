@@ -136,7 +136,7 @@ function formatPart(key, value) {
   // the note. Commas, colons and parentheses are left alone: they carry real
   // meaning in a subject or a company name, and on their own they cannot open
   // or close an entry, which is what a forged action would need.
-  val = raw.replace(/[[\]]/g, "").replace(/;/g, ",").replace(/->/g, "-").replace(/\s+/g, " ").trim();
+  val = raw.replace(/[[\]]/g, "").replace(/;/g, ",").replace(/-+>+/g, "-").replace(/\s+/g, " ").trim();
   if (!val) return "";
   if (ID_KEYS.has(key) && !raw.includes("://")) {
     if (raw.length > MAX_ID_LEN) return "";

@@ -240,3 +240,10 @@ test("summarizeToolResult: an id that is really a link takes the prose cap", () 
   const s = summarizeToolResult({ id: `https://evil.example.com/${"p".repeat(200)}` });
   assert.ok(s.length < 140, "a url never rides the id allowance");
 });
+
+test("summarizeToolResult: a doubled result arrow cannot re-form", () => {
+  for (const probe of ["a->>b", "a->>>b", "a-->b"]) {
+    const s = summarizeToolResult({ name: probe });
+    assert.ok(!s.includes("->"), `${probe} must not leave a result arrow`);
+  }
+});
