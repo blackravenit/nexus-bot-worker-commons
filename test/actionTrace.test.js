@@ -247,3 +247,21 @@ test("summarizeToolResult: a doubled result arrow cannot re-form", () => {
     assert.ok(!s.includes("->"), `${probe} must not leave a result arrow`);
   }
 });
+
+test("summarizeToolCall: a guard bypass is always recorded", () => {
+  const s = summarizeToolCall("calendar_create_teams_meeting", {
+    subject: "AI Stack Training with Joseph",
+    start: "2026-11-05T14:00:00",
+    end: "2026-11-05T15:00:00",
+    confirmed_weekday: "Thursday",
+    override_day_cap: true,
+    override_conflict: true,
+  });
+  assert.match(s, /override_day_cap: true/);
+  assert.match(s, /override_conflict: true/);
+});
+
+test("summarizeToolCall: a bypass flag left false is not recorded", () => {
+  const s = summarizeToolCall("calendar_create_event", { subject: "x", override_day_cap: false });
+  assert.ok(!s.includes("override_day_cap"), "only a true bypass is worth recording");
+});

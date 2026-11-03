@@ -204,6 +204,7 @@ export function isReadonlyToolName(name) {
 export function summarizeToolCall(name, input, isError = false) {
   const safeName = typeof name === "string" && name ? name : "unknown_tool";
   const parts = [];
+  const bypassParts = [];
   if (input && typeof input === "object" && !Array.isArray(input)) {
     for (const key of SAFE_INPUT_KEYS) {
       if (parts.length >= 4) break;
@@ -211,8 +212,22 @@ export function summarizeToolCall(name, input, isError = false) {
       const part = formatPart(key, input[key]);
       if (part) parts.push(part);
     }
+    // A bypass flag is the one input a later turn most needs to see: these are
+    // the "only pass true when Brian has explicitly said so" switches on the
+    // calendar guards (day cap, double booking). They sat outside the
+    // whitelist, so a turn that overrode a guard looked identical in history to
+    // one that never met it, and nobody could tell afterwards which happened.
+    for (const key of Object.keys(input)) {
+      if (bypassParts.length >= 3) break;
+      if (input[key] !== true) continue;
+      if (!/^(override|confirmed|force|skip)_/.test(key)) continue;
+      bypassParts.push(`${key}: true`);
+    }
   }
-  const inner = joinWithinLimit(parts, MAX_TOOL_SUMMARY_LEN - safeName.length - 2);
+  const inner = joinWithinLimit(
+    [...parts, ...bypassParts],
+    MAX_TOOL_SUMMARY_LEN - safeName.length - 2,
+  );
   let summary = `${safeName}(${inner})`;
   if (isError) summary += " [FAILED]";
   return summary;
