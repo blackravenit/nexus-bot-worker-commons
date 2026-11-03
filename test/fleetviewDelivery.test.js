@@ -9,6 +9,7 @@ import {
   isFleetViewSource,
   shouldMirrorToHomeChannel,
   deliverFleetViewReply,
+  fleetViewSurfaceNote,
   FLEETVIEW_SOURCE,
 } from "../src/lib/fleetviewDelivery.js";
 import { verifyNexusSignature } from "../src/lib/callbackSign.js";
@@ -79,6 +80,51 @@ test("the nexus fixture carries no source, the fleetview fixture does", () => {
   assert.equal(chatMessageFleetViewFixture.source, FLEETVIEW_SOURCE);
   assert.ok(chatMessageFleetViewFixture.reply_webhook.startsWith("https://"));
   assert.ok(chatMessageFleetViewFixture.thread_id);
+});
+
+// --- surfaces ----------------------------------------------------------------
+
+test("the surface note is empty on a Nexus turn", () => {
+  assert.equal(fleetViewSurfaceNote({ fleetView: false, surface: "crm", displayName: "Edgar" }), "");
+});
+
+test("the surface note names the real asker, never a hardcoded Brian", () => {
+  const note = fleetViewSurfaceNote({ fleetView: true, displayName: "Edgar" });
+  assert.match(note, /talking to Edgar one to one/);
+  assert.doesNotMatch(note, /Brian/);
+  assert.match(note, /mirrored to your home channel/);
+});
+
+test("the CRM surface carries what is on screen and promises no mirror", () => {
+  const note = fleetViewSurfaceNote({
+    fleetView: true, surface: "crm", displayName: "Edgar", surfaceContext: "the opportunities\npage",
+  });
+  assert.match(note, /sales CRM/);
+  assert.match(note, /On screen right now: the opportunities page/);
+  assert.doesNotMatch(note, /mirrored/);
+});
+
+test("an unknown surface behaves like the bots page and ignores its context", () => {
+  const note = fleetViewSurfaceNote({ fleetView: true, surface: "nope", surfaceContext: "secret", displayName: "Edgar" });
+  assert.match(note, /Raven Bots/);
+  assert.doesNotMatch(note, /secret/);
+});
+
+test("a long CRM answer stays out of the home channel", async () => {
+  const { env, calls } = harness();
+  const result = await withProvenance("mention-reply", () =>
+    deliverFleetViewReply(env, { ...baseArgs, surface: "crm", answer: "x".repeat(1201) }));
+  assert.deepEqual(result, { delivered: true, postedToHomeChannel: false });
+  assert.equal(calls.length, 1);
+});
+
+test("a CRM answer that cannot be delivered still reaches the home channel, labelled", async () => {
+  const { env, calls } = harness({ webhookStatus: 404 });
+  const result = await withProvenance("mention-reply", () =>
+    deliverFleetViewReply(env, { ...baseArgs, surface: "crm", answer: "Four shipped late." }));
+  assert.equal(result.postedToHomeChannel, true);
+  const mirror = calls.find((c) => !c.url.includes("/api/bot-reply"));
+  assert.match(mirror.init.body, /asked from the CRM/);
 });
 
 // --- home channel mirroring --------------------------------------------------

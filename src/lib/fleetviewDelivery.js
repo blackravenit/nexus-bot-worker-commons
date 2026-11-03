@@ -52,6 +52,45 @@ export function isFleetViewSource(source) {
 }
 
 /**
+ * Other apps that dispatch through this path. A surface is a window onto the
+ * bot inside another app: the turn is the same, but it is that app's record, so
+ * long answers stay out of the bot's home channel unless delivery fails.
+ * Unknown values fall back to the bots page behaviour.
+ */
+const APP_SURFACES = {
+  crm: { label: "the CRM", intro: "the chat panel inside the sales CRM at https://sales.blackravenit.com" },
+};
+
+const MAX_SURFACE_CONTEXT_CHARS = 300;
+
+/**
+ * The prompt note for a FleetView turn, or "" for a Nexus turn.
+ *
+ * @param {object} args
+ * @param {boolean} args.fleetView - true for a FleetView source turn
+ * @param {string} [args.surface] - payload surface, such as "crm"
+ * @param {string} [args.surfaceContext] - what the person has open, set by the signing app
+ * @param {string} [args.displayName] - who is asking
+ * @returns {string}
+ */
+export function fleetViewSurfaceNote({ fleetView, surface, surfaceContext, displayName }) {
+  if (!fleetView) return "";
+  const app = APP_SURFACES[surface];
+  const who = String(displayName || "").trim() || "the person asking";
+  const where = app ? app.intro : "Raven Bots, a private bot panel";
+  const mirrorLine = app
+    ? ""
+    : " If the answer is genuinely long it is mirrored to your home channel" +
+      " automatically, so do not offer to post it there or ask whether they want it written up.";
+  const context = String(surfaceContext || "").replace(/\s+/g, " ").trim().slice(0, MAX_SURFACE_CONTEXT_CHARS);
+  return `\n\nSURFACE: this question came from ${where}, not from a Nexus channel.` +
+    ` You are talking to ${who} one to one. Lead with the answer in the first sentence and keep it tight;` +
+    " no channel greetings, no @mentions, no \"posting this to the channel\" narration. Use your tools" +
+    ` exactly as you normally would.${mirrorLine}` +
+    (app && context ? ` On screen right now: ${context}` : "");
+}
+
+/**
  * Decide whether a FleetView answer is substantive enough to also belong in
  * the bot's Nexus home channel.
  *
@@ -188,13 +227,14 @@ async function postSignedReply(env, replyWebhook, payload) {
  * @param {object} nexusOptions - { nexusKeyEnvVar } and friends
  * @param {string} [askedBy] - display name to attribute the question to
  * @param {string} [question] - the original question, for channel context
+ * @param {string} [origin] - where it was asked, for the header
  * @returns {Promise<boolean>}
  */
-async function mirrorToHomeChannel(env, homeChannelSlug, answer, nexusOptions, askedBy, question) {
+async function mirrorToHomeChannel(env, homeChannelSlug, answer, nexusOptions, askedBy, question, origin = "Raven Bots") {
   if (!homeChannelSlug) return false;
   const header = question
-    ? `${askedBy || "Brian"} asked from Raven Bots: ${String(question).slice(0, 300)}\n\n`
-    : `Asked by ${askedBy || "Brian"} from Raven Bots.\n\n`;
+    ? `${askedBy || "Brian"} asked from ${origin}: ${String(question).slice(0, 300)}\n\n`
+    : `Asked by ${askedBy || "Brian"} from ${origin}.\n\n`;
   try {
     const parts = chunkBangReport(header + answer);
     for (const part of parts) {
@@ -227,6 +267,7 @@ async function mirrorToHomeChannel(env, homeChannelSlug, answer, nexusOptions, a
  * @param {object|null} [args.stagedAction] - HITL card staged this turn
  * @param {string|null} [args.error] - error text when the turn failed
  * @param {object} [args.nexusOptions] - passed through to postToNexus
+ * @param {string} [args.surface] - another app's surface; its answers mirror only on failed delivery
  * @returns {Promise<{delivered: boolean, postedToHomeChannel: boolean}>}
  */
 export async function deliverFleetViewReply(env, args) {
@@ -243,12 +284,15 @@ export async function deliverFleetViewReply(env, args) {
     error = null,
     nexusOptions = {},
     timings = null,
+    surface,
   } = args || {};
 
   const text = String(answer || "");
+  const appSurface = APP_SURFACES[surface];
+  const origin = appSurface ? appSurface.label : "Raven Bots";
   let postedToHomeChannel = false;
 
-  if (!error && text && shouldMirrorToHomeChannel(text, { stagedAction })) {
+  if (!appSurface && !error && text && shouldMirrorToHomeChannel(text, { stagedAction })) {
     postedToHomeChannel = await mirrorToHomeChannel(
       env, homeChannelSlug, text, nexusOptions, askedBy, question,
     );
@@ -278,7 +322,7 @@ export async function deliverFleetViewReply(env, args) {
   // home channel so the work is recoverable instead of lost to a dead socket.
   if (!delivered && !postedToHomeChannel && text) {
     postedToHomeChannel = await mirrorToHomeChannel(
-      env, homeChannelSlug, text, nexusOptions, askedBy, question,
+      env, homeChannelSlug, text, nexusOptions, askedBy, question, origin,
     );
     if (postedToHomeChannel) {
       console.warn(`[fleetview] webhook undeliverable; answer posted to ${homeChannelSlug} instead`);

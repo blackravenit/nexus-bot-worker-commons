@@ -53,7 +53,7 @@ import { buildActionBreadcrumb } from "../lib/actionTrace.js";
 import { scrubFleetDashes } from "../lib/sanitize.js";
 import { collectSearchResultUrls, groundUrlsInText } from "../lib/researchShare.js";
 import { applyRelayToolPolicy, relayModeSystemNote, mirrorRelayReply } from "../lib/fleetRelay.js";
-import { isFleetViewSource, deliverFleetViewReply } from "../lib/fleetviewDelivery.js";
+import { isFleetViewSource, deliverFleetViewReply, fleetViewSurfaceNote } from "../lib/fleetviewDelivery.js";
 import { injectFleetviewReport, shouldInjectFleetviewReport, FLEETVIEW_REPORT_PROMPT } from "../lib/fleetviewReport.js";
 import { injectBotsPageRead, BOTS_PAGE_READ_PROMPT } from "../lib/botsPageRead.js";
 import {
@@ -479,6 +479,8 @@ export async function runLlmPipeline({
   source,
   reply_webhook,
   thread_id,
+  surface,
+  surface_context,
   dispatched_at,
   spoken = false,
   config,
@@ -1030,17 +1032,12 @@ export async function runLlmPipeline({
       " help with?\", \"Want me to do anything else?\" and similar empty closers. A genuine clarifying" +
       " question (you actually need a decision or detail to proceed) or a natural conversational beat" +
       " is fine; a reflexive service-desk sign-off is not.";
-    // FleetView is Brian's laptop launcher: a one-to-one panel, not a channel.
-    // The answer he reads is the panel text, and anything long is separately
-    // mirrored into the home channel by the delivery layer, so the bot should
-    // lead with the answer rather than write for a channel audience.
-    const FLEETVIEW_SURFACE = fleetView
-      ? "\n\nSURFACE: this question came from FleetView, Brian's private bot panel, not from a Nexus channel." +
-        " You are talking to Brian one to one. Lead with the answer in the first sentence and keep it tight;" +
-        " no channel greetings, no @mentions, no \"posting this to the channel\" narration. Use your tools" +
-        " exactly as you normally would. If the answer is genuinely long it is mirrored to your home channel" +
-        " automatically, so do not offer to post it there or ask whether he wants it written up."
-      : "";
+    // A one-to-one panel, not a channel, so the bot leads with the answer rather
+    // than writing for a channel audience. It names the real asker: this used to
+    // say "Brian" on every turn, including staff on the bots page.
+    const FLEETVIEW_SURFACE = fleetViewSurfaceNote({
+      fleetView, surface, surfaceContext: surface_context, displayName: display_name,
+    });
     // Two blocks, not one, and the split is the whole point.
     //
     // The persona (with its knowledge files) is the big stable half and is
@@ -1468,6 +1465,7 @@ export async function runLlmPipeline({
           askedBy: display_name,
           error: err.message || "pipeline error",
           nexusOptions,
+          surface,
         });
       } else {
         await postToNexus(env, channel_slug, snag, nexusOptions);
@@ -1608,6 +1606,7 @@ export async function runLlmPipeline({
         toolTrace,
         stagedAction,
         nexusOptions,
+        surface,
         timings: { ...marks, total: Date.now() - t0, ...laneTimings(spoken, effectiveModel) },
       });
     } catch (err) {
@@ -2251,6 +2250,9 @@ async function handleChatMessageInner(request, env, ctx, config) {
     source,
     reply_webhook,
     thread_id,
+    // Another app's window onto the bot, such as "crm", and what its user has open.
+    surface,
+    surface_context,
     // FleetView voice lane flags: voice === true or reply_style === "spoken".
     voice,
     reply_style,
@@ -2460,6 +2462,7 @@ async function handleChatMessageInner(request, env, ctx, config) {
               askedBy: display_name,
               error: cmdError,
               nexusOptions,
+              surface,
             }).catch((err) => {
               console.error(`[handleChatMessage] fleetview command delivery error !${verb}:`, err?.message);
             });
@@ -2597,6 +2600,8 @@ async function handleChatMessageInner(request, env, ctx, config) {
     source: source || undefined,
     reply_webhook: reply_webhook || undefined,
     thread_id: thread_id || undefined,
+    surface: surface || undefined,
+    surface_context: surface_context || undefined,
     // Spoken fast lane; omitted when false so normal jobs are unchanged.
     spoken: isSpokenRequest({ voice, reply_style }) || undefined,
   };
