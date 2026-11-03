@@ -66,8 +66,17 @@ const ID_KEYS = new Set([
   "prospect_id", "entity_id", "attachment_id",
   "ticket_id", "ticketId", "invoice_id", "invoiceId", "InvoiceID",
   "contact_id", "contactId", "ContactID", "order_id", "orderId",
-  "reference", "Reference", "url",
 ]);
+
+// An identifier is an opaque token: a Graph id, a uuid, a Xero GUID. A value
+// with a space, a bracket or a quote in it is not one, so it takes the prose
+// cap instead. Two reasons this shape is enforced rather than trusted. A tool
+// RESULT carries outside text (email subjects, CRM fields, web pages), and the
+// breadcrumb is handed to the model as a trusted note about its own actions, so
+// a value that could close the note and add instructions is an injection route.
+// `url` and `reference` are deliberately NOT identifiers: a signed URL carries
+// its credential in the query string and must stay capped, not preserved whole.
+const ID_SHAPE = /^[A-Za-z0-9_\-=+/.:@]+$/;
 
 const MAX_TOOLS_IN_BREADCRUMB = 10;
 const MAX_VALUE_LEN = 80;
@@ -119,10 +128,13 @@ function formatPart(key, raw) {
   if (typeof val === "object") {
     try { val = JSON.stringify(val); } catch { val = "[obj]"; }
   }
-  val = String(val).replace(/\s+/g, " ").trim();
+  // Brackets and semicolons delimit the breadcrumb itself. Strip them from
+  // every value so no recorded text can forge an entry or end the note.
+  val = String(val).replace(/[[\]]/g, "").replace(/;/g, ",").replace(/\s+/g, " ").trim();
   if (!val) return "";
   if (ID_KEYS.has(key)) {
-    return val.length > MAX_ID_LEN ? "" : `${key}: ${val}`;
+    if (val.length > MAX_ID_LEN) return "";
+    if (ID_SHAPE.test(val)) return `${key}: ${val}`;
   }
   if (val.length > MAX_VALUE_LEN) val = `${val.slice(0, MAX_VALUE_LEN)}...`;
   return `${key}: ${val}`;
