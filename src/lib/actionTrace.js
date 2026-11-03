@@ -136,7 +136,13 @@ function formatPart(key, value) {
   // the note. Commas, colons and parentheses are left alone: they carry real
   // meaning in a subject or a company name, and on their own they cannot open
   // or close an entry, which is what a forged action would need.
-  val = raw.replace(/[[\]]/g, "").replace(/;/g, ",").replace(/-+>+/g, "-").replace(/\s+/g, " ").trim();
+  // Sanitising runs on a clamped copy: a tool can hand back a value of any
+  // size, and no pattern should walk a megabyte of it. The length checks below
+  // still read the original. `->+` starts only at a hyphen that is already
+  // followed by an angle bracket, so it cannot backtrack across a run of
+  // hyphens, and it eats every following bracket so no arrow survives.
+  val = raw.slice(0, MAX_ID_LEN + 1)
+    .replace(/[[\]]/g, "").replace(/;/g, ",").replace(/->+/g, "-").replace(/\s+/g, " ").trim();
   if (!val) return "";
   if (ID_KEYS.has(key) && !raw.includes("://")) {
     if (raw.length > MAX_ID_LEN) return "";
