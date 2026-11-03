@@ -51,15 +51,39 @@ const READONLY_PREFIXES = [
   "check_", "fetch_", "view_", "show_", "query_",
 ];
 
+// Keys whose value is an OPAQUE IDENTIFIER, recorded whole or not at all.
+// A Microsoft Graph event or message id runs past 150 characters, so the
+// 80-character value cap used to store `AAMkADZh...` with an ellipsis: a
+// referent no later turn can hand back to a tool, and one a careful model
+// correctly refuses to act on. On 2026-11-03 Wren booked a meeting, moved it
+// twice, and then answered "context's gone cold on which event", because the
+// only pointer in her own history was a truncated id. An id too long even for
+// MAX_ID_LEN is DROPPED rather than shortened, since half an id reads as a
+// usable one.
+const ID_KEYS = new Set([
+  "id", "ID", "uuid",
+  "message_id", "messageId", "event_id", "eventId",
+  "prospect_id", "entity_id", "attachment_id",
+  "ticket_id", "ticketId", "invoice_id", "invoiceId", "InvoiceID",
+  "contact_id", "contactId", "ContactID", "order_id", "orderId",
+  "reference", "Reference", "url",
+]);
+
 const MAX_TOOLS_IN_BREADCRUMB = 10;
 const MAX_VALUE_LEN = 80;
-const MAX_TOOL_SUMMARY_LEN = 220;
+const MAX_ID_LEN = 512;
+const MAX_TOOL_SUMMARY_LEN = 520;
 
 // Identifier-ish keys worth retaining from a tool RESULT (what came back), so a
 // later turn can reference it ("authorise it", "void that one"). Same spirit as
 // SAFE_INPUT_KEYS: ids/numbers/totals/status only, never body/content text.
 // Covers both our snake_case shapes and Xero/Ninja PascalCase fields.
+// "error" leads: a handler that REFUSED (double-booking guard, day cap) returns
+// a structured error rather than throwing, so without it a refused call and a
+// silent success look identical in the breadcrumb. Wren's first create on
+// 2026-11-03 was refused and her own history recorded nothing about it.
 const RESULT_ID_KEYS = [
+  "error",
   "id", "ID", "uuid",
   "invoiceId", "invoice_id", "InvoiceID", "InvoiceNumber", "invoiceNumber",
   "contactId", "contact_id", "ContactID",
@@ -79,7 +103,51 @@ const RESULT_WRAPPER_KEYS = [
   "ticket", "event", "order", "message", "payment",
 ];
 
-const MAX_RESULT_SUMMARY_LEN = 160;
+const MAX_RESULT_SUMMARY_LEN = 320;
+
+/**
+ * Render one key and value for a breadcrumb. Identifier values are kept whole
+ * up to MAX_ID_LEN and dropped beyond it; everything else is shortened with an
+ * ellipsis, since prose only has to be recognisable, not replayable.
+ *
+ * @param {string} key - whitelisted key name
+ * @param {unknown} raw - the value as the tool gave it
+ * @returns {string} "key: value", or "" when there is nothing worth recording
+ */
+function formatPart(key, raw) {
+  let val = raw;
+  if (typeof val === "object") {
+    try { val = JSON.stringify(val); } catch { val = "[obj]"; }
+  }
+  val = String(val).replace(/\s+/g, " ").trim();
+  if (!val) return "";
+  if (ID_KEYS.has(key)) {
+    return val.length > MAX_ID_LEN ? "" : `${key}: ${val}`;
+  }
+  if (val.length > MAX_VALUE_LEN) val = `${val.slice(0, MAX_VALUE_LEN)}...`;
+  return `${key}: ${val}`;
+}
+
+/**
+ * Join breadcrumb parts under a length budget by dropping whole parts that do
+ * not fit. Never slices, because a sliced identifier is the bug this file was
+ * fixed for.
+ *
+ * @param {string[]} parts - rendered "key: value" strings
+ * @param {number} limit - maximum length of the joined string
+ * @returns {string} the joined parts that fit
+ */
+function joinWithinLimit(parts, limit) {
+  const kept = [];
+  let len = 0;
+  for (const part of parts) {
+    const add = kept.length ? part.length + 2 : part.length;
+    if (len + add > limit) continue;
+    kept.push(part);
+    len += add;
+  }
+  return kept.join(", ");
+}
 
 // Verbs that assert an action was completed. Used to detect a reply that
 // claims success. Past-tense / done-state phrasing only, "I'll add" or
@@ -116,20 +184,12 @@ export function summarizeToolCall(name, input, isError = false) {
     for (const key of SAFE_INPUT_KEYS) {
       if (parts.length >= 4) break;
       if (input[key] === undefined || input[key] === null) continue;
-      let val = input[key];
-      if (typeof val === "object") {
-        try { val = JSON.stringify(val); } catch { val = "[obj]"; }
-      }
-      val = String(val).replace(/\s+/g, " ").trim();
-      if (!val) continue;
-      if (val.length > MAX_VALUE_LEN) val = `${val.slice(0, MAX_VALUE_LEN)}...`;
-      parts.push(`${key}: ${val}`);
+      const part = formatPart(key, input[key]);
+      if (part) parts.push(part);
     }
   }
-  let summary = parts.length ? `${safeName}(${parts.join(", ")})` : `${safeName}()`;
-  if (summary.length > MAX_TOOL_SUMMARY_LEN) {
-    summary = `${summary.slice(0, MAX_TOOL_SUMMARY_LEN)}...)`;
-  }
+  const inner = joinWithinLimit(parts, MAX_TOOL_SUMMARY_LEN - safeName.length - 2);
+  let summary = `${safeName}(${inner})`;
   if (isError) summary += " [FAILED]";
   return summary;
 }
@@ -159,11 +219,9 @@ export function summarizeToolResult(result) {
       if (parts.length >= 4) break;
       if (src[key] === undefined || src[key] === null) continue;
       if (typeof src[key] === "object") continue; // ids are scalars
-      let val = String(src[key]).replace(/\s+/g, " ").trim();
-      if (!val) continue;
-      if (val.length > MAX_VALUE_LEN) val = `${val.slice(0, MAX_VALUE_LEN)}...`;
       if (parts.some((p) => p.startsWith(`${key}:`))) continue;
-      parts.push(`${key}: ${val}`);
+      const part = formatPart(key, src[key]);
+      if (part) parts.push(part);
     }
   };
 
@@ -178,11 +236,7 @@ export function summarizeToolResult(result) {
     }
   }
   if (parts.length === 0) return "";
-  let summary = parts.join(", ");
-  if (summary.length > MAX_RESULT_SUMMARY_LEN) {
-    summary = `${summary.slice(0, MAX_RESULT_SUMMARY_LEN)}...`;
-  }
-  return summary;
+  return joinWithinLimit(parts, MAX_RESULT_SUMMARY_LEN);
 }
 
 /**

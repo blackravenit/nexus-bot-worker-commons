@@ -165,3 +165,45 @@ test("looksLikeUnbackedClaim: junk input", () => {
   assert.equal(looksLikeUnbackedClaim("", []), false);
   assert.equal(looksLikeUnbackedClaim(null, []), false);
 });
+
+// A Microsoft Graph event id is over 150 characters. The breadcrumb exists so
+// the NEXT turn can act on "it", which only works if the id survives whole.
+const GRAPH_EVENT_ID =
+  "AAMkADZhNmU0ZjY5LTQ5NDQtNGY4ZS1iOWRlLWZhZTE5YzdjMzM2OQBGAAAAAADglM4TEtvAQqay639J" +
+  "mZ1HBwDLo3Xq2nJ3TrOqkJ2r8hXqAAAAAAENAADLo3Xq2nJ3TrOqkJ2r8hXqAAB1pQZ8AAA=";
+
+test("summarizeToolCall: an opaque id is never truncated", () => {
+  const s = summarizeToolCall("calendar_update_event", {
+    event_id: GRAPH_EVENT_ID,
+    start: "2026-11-10T09:00:00",
+  });
+  assert.ok(s.includes(GRAPH_EVENT_ID), "the whole event id must survive");
+  assert.ok(!s.includes("..."), "an id must not be recorded with an ellipsis");
+});
+
+test("summarizeToolResult: a returned id is never truncated", () => {
+  const s = summarizeToolResult({ event: { id: GRAPH_EVENT_ID, status: "confirmed" } });
+  assert.ok(s.includes(GRAPH_EVENT_ID), "the whole returned id must survive");
+});
+
+test("buildActionBreadcrumb: the id a later turn needs survives the breadcrumb", () => {
+  const b = buildActionBreadcrumb([
+    {
+      name: "calendar_create_teams_meeting",
+      input: { subject: "AI Stack Training with Joseph", start: "2026-11-05T14:00:00" },
+      result: { id: GRAPH_EVENT_ID },
+    },
+  ]);
+  assert.ok(b.includes(GRAPH_EVENT_ID), "the breadcrumb must carry a usable referent");
+});
+
+test("summarizeToolResult: a refused call reads as refused", () => {
+  const s = summarizeToolResult({ error: "day_cap_reached", count: 7 });
+  assert.match(s, /error: day_cap_reached/);
+});
+
+test("summarizeToolCall: a long non-id value is still truncated", () => {
+  const s = summarizeToolCall("draft_email", { subject: "y".repeat(300) });
+  assert.ok(s.length < 200, "prose values stay capped");
+  assert.match(s, /\.\.\./);
+});
