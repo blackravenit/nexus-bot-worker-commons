@@ -229,3 +229,14 @@ test("summarizeToolCall: an id-shaped field with prose in it takes the prose cap
   const s = summarizeToolCall("xero_find", { reference: `INV ${"z".repeat(200)}` });
   assert.ok(s.length < 200, "free text never rides the id allowance");
 });
+
+test("summarizeToolResult: a bracketed value cannot be stripped into an id", () => {
+  const s = summarizeToolResult({ id: `abc]${"q".repeat(200)}` });
+  assert.ok(s.length < 140, "a delimiter means it is not an identifier");
+  assert.match(s, /\.\.\./);
+});
+
+test("summarizeToolResult: an id that is really a link takes the prose cap", () => {
+  const s = summarizeToolResult({ id: `https://evil.example.com/${"p".repeat(200)}` });
+  assert.ok(s.length < 140, "a url never rides the id allowance");
+});

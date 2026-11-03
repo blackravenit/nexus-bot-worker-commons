@@ -120,21 +120,27 @@ const MAX_RESULT_SUMMARY_LEN = 320;
  * ellipsis, since prose only has to be recognisable, not replayable.
  *
  * @param {string} key - whitelisted key name
- * @param {unknown} raw - the value as the tool gave it
+ * @param {unknown} value - the value as the tool gave it
  * @returns {string} "key: value", or "" when there is nothing worth recording
  */
-function formatPart(key, raw) {
-  let val = raw;
+function formatPart(key, value) {
+  let val = value;
   if (typeof val === "object") {
     try { val = JSON.stringify(val); } catch { val = "[obj]"; }
   }
-  // Brackets and semicolons delimit the breadcrumb itself. Strip them from
-  // every value so no recorded text can forge an entry or end the note.
-  val = String(val).replace(/[[\]]/g, "").replace(/;/g, ",").replace(/\s+/g, " ").trim();
+  // The shape test runs on the RAW value: a value holding a delimiter is not an
+  // identifier, and must not become one by having the delimiter stripped out.
+  const raw = String(val).trim();
+  // Brackets, semicolons and the result arrow delimit the breadcrumb itself.
+  // Strip them from every value so no recorded text can forge an entry or end
+  // the note. Commas, colons and parentheses are left alone: they carry real
+  // meaning in a subject or a company name, and on their own they cannot open
+  // or close an entry, which is what a forged action would need.
+  val = raw.replace(/[[\]]/g, "").replace(/;/g, ",").replace(/->/g, "-").replace(/\s+/g, " ").trim();
   if (!val) return "";
-  if (ID_KEYS.has(key)) {
-    if (val.length > MAX_ID_LEN) return "";
-    if (ID_SHAPE.test(val)) return `${key}: ${val}`;
+  if (ID_KEYS.has(key) && !raw.includes("://")) {
+    if (raw.length > MAX_ID_LEN) return "";
+    if (ID_SHAPE.test(raw)) return `${key}: ${raw}`;
   }
   if (val.length > MAX_VALUE_LEN) val = `${val.slice(0, MAX_VALUE_LEN)}...`;
   return `${key}: ${val}`;
