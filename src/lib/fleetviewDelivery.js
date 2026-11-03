@@ -62,6 +62,20 @@ const APP_SURFACES = {
 };
 
 const MAX_SURFACE_CONTEXT_CHARS = 300;
+const MAX_SURFACE_NAME_CHARS = 80;
+
+/**
+ * Flattens text bound for the session block, which the model treats as a system
+ * instruction: one line, capped, and unable to open or close a tag. Senders must
+ * still not put record text here; this only limits the damage if one does.
+ *
+ * @param {*} value
+ * @param {number} maxChars
+ * @returns {string}
+ */
+function plainContextText(value, maxChars) {
+  return String(value || "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, maxChars);
+}
 
 /**
  * The prompt note for a FleetView turn, or "" for a Nexus turn.
@@ -76,13 +90,13 @@ const MAX_SURFACE_CONTEXT_CHARS = 300;
 export function fleetViewSurfaceNote({ fleetView, surface, surfaceContext, displayName }) {
   if (!fleetView) return "";
   const app = APP_SURFACES[surface];
-  const who = String(displayName || "").trim() || "the person asking";
+  const who = plainContextText(displayName, MAX_SURFACE_NAME_CHARS) || "the person asking";
   const where = app ? app.intro : "Raven Bots, a private bot panel";
   const mirrorLine = app
     ? ""
     : " If the answer is genuinely long it is mirrored to your home channel" +
       " automatically, so do not offer to post it there or ask whether they want it written up.";
-  const context = String(surfaceContext || "").replace(/\s+/g, " ").trim().slice(0, MAX_SURFACE_CONTEXT_CHARS);
+  const context = plainContextText(surfaceContext, MAX_SURFACE_CONTEXT_CHARS);
   return `\n\nSURFACE: this question came from ${where}, not from a Nexus channel.` +
     ` You are talking to ${who} one to one. Lead with the answer in the first sentence and keep it tight;` +
     " no channel greetings, no @mentions, no \"posting this to the channel\" narration. Use your tools" +
