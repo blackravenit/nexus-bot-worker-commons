@@ -217,7 +217,7 @@ test("a mail call asks for the us jurisdiction and its own pool", async () => {
   const { seen, ns } = fakeJurisdictionNamespace(async () => new Response("ok"));
   const env = { AI_EGRESS: ns, WORKER_NAME: "jacob-worker" };
 
-  await egressFetch(env, "https://graph.microsoft.com/v1.0/x", {}, { jurisdiction: "us", pool: "mail" });
+  await egressFetch(env, "https://graph.microsoft.com/v1.0/users/a/sendMail", { method: "POST" }, { jurisdiction: "us", pool: "mail" });
 
   assert.deepEqual(seen.jurisdictions, ["us"], "the hard constraint must actually be requested");
   assert.equal(seen.names.length, 1);
@@ -243,7 +243,7 @@ test("a runtime without jurisdiction() still sends, unpinned rather than failed"
     idFromName(name) { seen.names.push(name); return `id:${name}`; },
     get() { return { fetch: async () => new Response("ok") }; },
   };
-  const res = await egressFetch({ AI_EGRESS: ns, WORKER_NAME: "jacob-worker" }, "https://graph.microsoft.com/x", {}, { jurisdiction: "us", pool: "mail" });
+  const res = await egressFetch({ AI_EGRESS: ns, WORKER_NAME: "jacob-worker" }, "https://graph.microsoft.com/x", { method: "POST" }, { jurisdiction: "us", pool: "mail" });
   assert.equal(res.status, 200);
   assert.match(seen.names[0], /^jacob-worker-mail-enam-\d$/, "pool still applies without jurisdiction support");
 });
@@ -256,4 +256,44 @@ test("with no binding at all a mail call is a plain fetch", async () => {
   assert.equal(await result.text(), "direct");
   assert.equal(calls.length, 1, "exactly one direct call, no object hop");
   assert.equal(calls[0][1].method, "POST", "init is passed through untouched");
+});
+
+// Only Graph WRITES are pinned (Brian, 2026-11-07). Every mailbox poll through
+// the object billed wall clock and pushed the account past the 400k GB-s
+// Durable Object allowance; Microsoft's restriction is on sending, not reading.
+test("a Graph read on the mail pool goes direct, with no object hop", async () => {
+  const { seen, ns } = fakeJurisdictionNamespace(async () => new Response("pinned"));
+  const { result, calls } = await withFetch(
+    async () => new Response("direct"),
+    () => egressFetch({ AI_EGRESS: ns, WORKER_NAME: "desk-app" }, "https://graph.microsoft.com/v1.0/users/a/messages", {}, { jurisdiction: "us", pool: "mail" }),
+  );
+  assert.equal(await result.text(), "direct");
+  assert.equal(calls.length, 1);
+  assert.deepEqual(seen.names, [], "a read must not wake an egress object");
+});
+
+test("every Graph write and the token call stay pinned", async () => {
+  const { seen, ns } = fakeJurisdictionNamespace(async () => new Response("pinned"));
+  const env = { AI_EGRESS: ns, WORKER_NAME: "desk-app" };
+  const opts = { jurisdiction: "us", pool: "mail" };
+  for (const method of ["POST", "PATCH", "PUT", "DELETE"]) {
+    const res = await egressFetch(env, "https://graph.microsoft.com/v1.0/users/a/events", { method }, opts);
+    assert.equal(await res.text(), "pinned", `${method} must stay pinned`);
+  }
+  const tok = await egressFetch(env, "https://login.microsoftonline.com/t/oauth2/v2.0/token", { method: "POST" }, opts);
+  assert.equal(await tok.text(), "pinned");
+  assert.equal(seen.names.length, 5);
+});
+
+test("a GET outside Graph on the mail pool stays pinned, so the colo probe still measures the pin", async () => {
+  const { seen, ns } = fakeJurisdictionNamespace(async () => new Response("pinned"));
+  const res = await egressFetch({ AI_EGRESS: ns, WORKER_NAME: "desk-app" }, "https://www.cloudflare.com/cdn-cgi/trace", {}, { jurisdiction: "us", pool: "mail" });
+  assert.equal(await res.text(), "pinned");
+  assert.equal(seen.names.length, 1);
+});
+
+test("an AI GET is never unpinned by the mail rule", async () => {
+  const { seen, ns } = fakeJurisdictionNamespace(async () => new Response("pinned"));
+  await egressFetch({ AI_EGRESS: ns, WORKER_NAME: "robert-worker" }, "https://graph.microsoft.com/v1.0/x", {});
+  assert.equal(seen.names.length, 1, "no pool means the rule does not apply");
 });

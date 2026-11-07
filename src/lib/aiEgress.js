@@ -122,6 +122,34 @@ function shardName(env, pool) {
 }
 
 /**
+ * True for a Graph READ on the mail pool, which skips the pin and goes direct.
+ *
+ * Microsoft restricts a mailbox for SENDING from many countries; reads are not
+ * what it measures. Pinning every mailbox poll cost us the full $12.50 Durable
+ * Object duration block in November 2026 (desk-app alone ran 179k GB-s), since
+ * the object bills wall clock for each proxied call. So only Graph GETs go
+ * direct. Every Graph write stays pinned, because sendMail, send, reply, forward,
+ * and event create or update can all put mail on the wire, and the token call
+ * and any non-Graph target (the egress-colo probe) stay pinned too.
+ *
+ * @param {string} url
+ * @param {RequestInit} init
+ * @param {{pool?: string}} opts
+ * @returns {boolean}
+ */
+export function isUnpinnedMailRead(url, init, opts) {
+  if (opts?.pool !== "mail") return false;
+  const method = String(init?.method || "GET").toUpperCase();
+  if (method !== "GET" && method !== "HEAD") return false;
+  try {
+    return new URL(url).host === "graph.microsoft.com";
+  } catch (err) {
+    console.warn(`[aiEgress] unparseable url, keeping the pin: ${err.message}`);
+    return false;
+  }
+}
+
+/**
  * Drop-in replacement for `fetch` on a call whose egress location matters.
  *
  * @param {object} env - Worker env, optionally carrying an AI_EGRESS binding
@@ -136,6 +164,7 @@ function shardName(env, pool) {
 export async function egressFetch(env, url, init = {}, opts = {}) {
   const ns = env && env.AI_EGRESS;
   if (!ns) return fetch(url, init);
+  if (isUnpinnedMailRead(url, init, opts)) return fetch(url, init);
 
   try {
     // A jurisdictional namespace yields DIFFERENT ids for the same name, so this
