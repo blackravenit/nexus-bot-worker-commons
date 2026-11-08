@@ -84,12 +84,20 @@ export class AiEgressBase {
     if (request.method !== "GET" && request.method !== "HEAD") {
       body = await request.arrayBuffer();
     }
+    // Disarmed as soon as upstream responds, unlike AbortSignal.timeout. Requests
+    // were billing 50 to 80 seconds of active time on sub-second calls, and being
+    // tested on 2026-11-08 is whether a live timer was holding the object awake.
+    const deadline = new AbortController();
+    const deadlineTimer = setTimeout(
+      () => deadline.abort(new Error(`no response within ${PROXY_TIMEOUT_MS}ms`)),
+      PROXY_TIMEOUT_MS,
+    );
     try {
       return await fetch(target, {
         method: request.method,
         headers: request.headers,
         body,
-        signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
+        signal: deadline.signal,
       });
     } catch (err) {
       // Surface the failure as a status the caller's retry logic understands
@@ -100,6 +108,8 @@ export class AiEgressBase {
         JSON.stringify({ error: { type: "egress_failed", message: err.message } }),
         { status: 502, headers: { "content-type": "application/json" } },
       );
+    } finally {
+      clearTimeout(deadlineTimer);
     }
   }
 }

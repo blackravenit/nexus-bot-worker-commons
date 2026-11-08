@@ -181,6 +181,38 @@ test("AiEgressBase returns 502 instead of throwing across the stub boundary", as
   assert.equal((await result.json()).error.type, "egress_failed");
 });
 
+test("AiEgressBase disarms its deadline as soon as upstream responds", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const obj = new AiEgressBase({}, {});
+  let seenSignal;
+  await withFetch(
+    async (_url, init) => {
+      seenSignal = init.signal;
+      return new Response("ok");
+    },
+    () => obj.fetch(new Request("https://login.microsoftonline.com/t/oauth2/v2.0/token", { method: "POST" })),
+  );
+
+  // A live timer may be what keeps the object billed long after the call ends.
+  t.mock.timers.tick(120000);
+  assert.equal(seenSignal.aborted, false);
+});
+
+test("AiEgressBase still gives up on an upstream that never responds", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const obj = new AiEgressBase({}, {});
+  const { result } = await withFetch(
+    (_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(init.signal.reason));
+      setImmediate(() => t.mock.timers.tick(120000));
+    }),
+    () => obj.fetch(new Request("https://api.anthropic.com/v1/messages", { method: "POST" })),
+  );
+
+  assert.equal(result.status, 502);
+  assert.equal((await result.json()).error.type, "egress_failed");
+});
+
 // ---------------------------------------------------------------------------
 // Jurisdiction and pools, added 2026-10-25 for outbound MAIL.
 //
