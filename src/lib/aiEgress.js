@@ -84,9 +84,10 @@ export class AiEgressBase {
     if (request.method !== "GET" && request.method !== "HEAD") {
       body = await request.arrayBuffer();
     }
-    // Disarmed as soon as upstream responds, unlike AbortSignal.timeout. Requests
-    // were billing 50 to 80 seconds of active time on sub-second calls, and being
-    // tested on 2026-11-08 is whether a live timer was holding the object awake.
+    // Disarmed as soon as upstream responds, never AbortSignal.timeout: its live
+    // timer keeps the object billed after the response. Measured 2026-11-08, desk-app
+    // fell to 0.2 seconds of active time per request, against 75 to 78 on the same
+    // day for workers still on the old timer.
     const deadline = new AbortController();
     const deadlineTimer = setTimeout(
       () => deadline.abort(new Error(`no response within ${PROXY_TIMEOUT_MS}ms`)),
