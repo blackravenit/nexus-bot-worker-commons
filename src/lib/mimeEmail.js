@@ -83,6 +83,36 @@ function qEncode(s) {
 }
 
 /**
+ * Build the reply-threading header lines. A value holding CR or LF is dropped
+ * with a warning, so a caller-supplied string can never inject a header.
+ * @param {object} fields
+ * @param {string} [fields.inReplyTo]
+ * @param {string} [fields.references]
+ * @param {string} [fields.threadIndex]
+ * @param {string} [fields.threadTopic]
+ * @returns {string[]}
+ */
+function threadHeaderLines({ inReplyTo, references, threadIndex, threadTopic }) {
+  const specs = [
+    ["inReplyTo", "In-Reply-To", inReplyTo, (v) => v],
+    ["references", "References", references, (v) => v],
+    ["threadIndex", "Thread-Index", threadIndex, (v) => v],
+    ["threadTopic", "Thread-Topic", threadTopic, qEncode],
+  ];
+  const lines = [];
+  for (const [field, header, raw, encode] of specs) {
+    if (raw == null || raw === "") continue;
+    const value = String(raw);
+    if (/[\r\n]/.test(value)) {
+      console.warn(`[mimeEmail] dropped ${field}: value contains CR or LF`);
+      continue;
+    }
+    lines.push(`${header}: ${encode(value)}`);
+  }
+  return lines;
+}
+
+/**
  * Build a multipart/alternative MIME message with both text/plain and
  * text/html parts, explicit charset declarations, and proper headers.
  *
@@ -100,6 +130,11 @@ function qEncode(s) {
  *   (e.g. "<https://.../u/token>, <mailto:unsub@x?subject=...>"). When set, a
  *   List-Unsubscribe-Post: List-Unsubscribe=One-Click header is added too so
  *   bulk sends qualify for Gmail/Yahoo one-click unsubscribe.
+ * @param {string} [opts.inReplyTo] - Message-ID of the message being answered
+ * @param {string} [opts.references] - space-joined ancestor Message-IDs
+ * @param {string} [opts.threadIndex] - Outlook Thread-Index (base64) for the reply
+ * @param {string} [opts.threadTopic] - Outlook Thread-Topic (Q-encoded if non-ASCII)
+ *   The four threading fields are optional; a value containing CR or LF is dropped.
  * @returns {{mime: string, messageId: string}}
  */
 export function buildMimeMessage(opts) {
@@ -145,6 +180,7 @@ export function buildMimeMessage(opts) {
   headerLines.push(
     `Subject: ${qEncode(subject)}`,
     `Message-ID: ${messageId}`,
+    ...threadHeaderLines(opts),
     "MIME-Version: 1.0",
   );
 
