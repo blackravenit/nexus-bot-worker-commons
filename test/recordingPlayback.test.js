@@ -105,3 +105,37 @@ test('a link with no persona still verifies, for accounts on the master', async 
   assert.equal(ok.ok, true);
   assert.equal(ok.persona, '');
 });
+
+// CloudX recordings: same signed link, a CX sid that names an R2 object.
+import { isCloudxSid, cloudxIdFromSid } from '../src/lib/recordingPlayback.js';
+
+const TERM_ID = '20261121170619042698-e753c2e7b15fce5708650273f3a01c3c';
+const CX_SID = `CX${TERM_ID}`;
+
+test('a CloudX sid signs and verifies like a Twilio one', async () => {
+  const url = await signPlaybackUrl(ENV, CX_SID, { persona: 'jacob' });
+  assert.match(url, /^https:\/\/bridge\.example\/audio\/recording\?/);
+  const ok = await verifyPlaybackRequest(ENV, new URL(url));
+  assert.equal(ok.ok, true);
+  assert.equal(ok.sid, CX_SID);
+  assert.equal(cloudxIdFromSid(ok.sid), TERM_ID);
+  const swapped = new URL(url);
+  swapped.searchParams.set('sid', `CX${'1'.repeat(20)}-${'b'.repeat(32)}`);
+  assert.equal((await verifyPlaybackRequest(ENV, swapped)).ok, false);
+});
+
+test('recordingSidFromUrl reads a cloudx: ref, and nothing sloppier', () => {
+  assert.equal(recordingSidFromUrl(`cloudx:${TERM_ID}`), CX_SID);
+  for (const bad of ['cloudx:', 'cloudx:../../x', 'cloudx:short', `cloudx:${TERM_ID}/../x`, `https://x/cloudx:${TERM_ID}`]) {
+    assert.equal(recordingSidFromUrl(bad), '', `should reject ${bad}`);
+  }
+});
+
+test('a CX sid cannot smuggle a path or a Twilio shape', () => {
+  assert.equal(isCloudxSid(CX_SID), true);
+  for (const bad of ['CX', 'CXshort', `CX${TERM_ID}.wav`, `CX${TERM_ID}/x`, `CX../${TERM_ID}`, `cx${TERM_ID}`, null, '']) {
+    assert.equal(isCloudxSid(bad), false, `should reject ${bad}`);
+  }
+  assert.equal(isCloudxSid(SID), false);
+  assert.equal(cloudxIdFromSid(SID), '');
+});

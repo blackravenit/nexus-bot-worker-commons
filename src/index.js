@@ -223,5 +223,5 @@ export { createBangCommandTool } from "./lib/voiceBangCommand.js";
 export { buildMimeMessage, sendMimeEmail } from "./lib/mimeEmail.js";
 export {
   signPlaybackUrl, verifyPlaybackRequest, recordingSidFromUrl, isRecordingSid,
-  playbackSigningKey, PLAYBACK_TTL_SEC,
+  playbackSigningKey, PLAYBACK_TTL_SEC, isCloudxSid, cloudxIdFromSid,
 } from "./lib/recordingPlayback.js";

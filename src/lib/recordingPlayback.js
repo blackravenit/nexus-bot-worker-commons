@@ -42,6 +42,16 @@ async function hmacHex(secret, message) {
 /** Twilio recording sids: RE + 32 hex. Anything else is not a sid. */
 const RECORDING_SID_RE = /^RE[0-9a-f]{32}$/i;
 
+/**
+ * CloudX (XCLUTEL NetSapiens) recordings. The bridge copies each call's WAV into
+ * R2 under cloudx/<term-call-id>.wav and stores `cloudx:<term-call-id>` as the
+ * call row's recording_url. On the wire the playback sid is `CX` + that id.
+ * The id charset is closed (no dot, slash or colon) because it becomes an R2
+ * object key, so a signed sid can never address anything outside cloudx/.
+ */
+const CLOUDX_SID_RE = /^CX[0-9A-Za-z_-]{16,100}$/;
+const CLOUDX_REF_RE = /^cloudx:([0-9A-Za-z_-]{16,100})$/;
+
 /** How long a minted playback link stays valid. */
 export const PLAYBACK_TTL_SEC = 60 * 60 * 6;
 
@@ -60,7 +70,24 @@ export function playbackSigningKey(env) {
  * @returns {boolean}
  */
 export function isRecordingSid(sid) {
-  return RECORDING_SID_RE.test(String(sid || ''));
+  const text = String(sid || '');
+  return RECORDING_SID_RE.test(text) || CLOUDX_SID_RE.test(text);
+}
+
+/**
+ * @param {string} sid
+ * @returns {boolean} whether the sid names a CloudX recording held in R2
+ */
+export function isCloudxSid(sid) {
+  return CLOUDX_SID_RE.test(String(sid || ''));
+}
+
+/**
+ * @param {string} sid a CloudX playback sid (CX + term call id)
+ * @returns {string} the term call id, or '' when the sid is not a CloudX one
+ */
+export function cloudxIdFromSid(sid) {
+  return isCloudxSid(sid) ? String(sid).slice(2) : '';
 }
 
 /**
@@ -69,9 +96,11 @@ export function isRecordingSid(sid) {
  * recording_url is stored as the Twilio resource URL plus .mp3, so the sid is
  * already on disk and no column had to be added to carry it.
  * @param {string} url
- * @returns {string} the sid, or '' when the URL is not a Twilio recording
+ * @returns {string} the sid (RE... for Twilio, CX... for a stored cloudx:<id> ref), or '' when the URL is neither
  */
 export function recordingSidFromUrl(url) {
+  const ref = String(url || '').match(CLOUDX_REF_RE);
+  if (ref) return `CX${ref[1]}`;
   const m = String(url || '').match(/\/Recordings\/(RE[0-9a-f]{32})(?:\.\w+)?(?:\?|$)/i);
   return m ? m[1] : '';
 }
