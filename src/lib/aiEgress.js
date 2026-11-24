@@ -122,14 +122,39 @@ export class AiEgressBase {
  * @param {object} env
  * @returns {string}
  */
-function shardName(env, pool) {
+function shardName(env, pool, avoid = -1) {
   const bot = env.AI_GATEWAY_BOT || env.WORKER_NAME || "fleet";
   const count = Number(env.AI_EGRESS_SHARDS) > 0 ? Number(env.AI_EGRESS_SHARDS) : DEFAULT_SHARDS;
   // No pool keeps the original name, so existing AI objects keep their identity
   // and their placement. A pool gives mail its own objects rather than queueing
   // a send behind a 2-minute model call on the same object.
   const prefix = pool ? `${bot}-${pool}` : bot;
-  return `${prefix}-${EGRESS_HINT}-${Math.floor(Math.random() * count)}`;
+  let index = Math.floor(Math.random() * count);
+  if (index === avoid && count > 1) index = (index + 1) % count;
+  return { name: `${prefix}-${EGRESS_HINT}-${index}`, index };
+}
+
+/**
+ * True when the request body can be sent a second time. A stream is consumed
+ * by the first attempt, so a call carrying one never retries.
+ *
+ * @param {RequestInit} init
+ * @returns {boolean}
+ */
+function isReplayableBody(init) {
+  const { body } = init || {};
+  return body == null || typeof body === "string" || body instanceof ArrayBuffer
+    || ArrayBuffer.isView(body) || body instanceof URLSearchParams;
+}
+
+/**
+ * Send one call through a named egress object.
+ *
+ * @returns {Promise<Response>}
+ */
+function viaObject(scoped, name, url, init) {
+  const stub = scoped.get(scoped.idFromName(name), { locationHint: EGRESS_HINT });
+  return stub.fetch(url, init);
 }
 
 /**
@@ -185,9 +210,20 @@ export async function egressFetch(env, url, init = {}, opts = {}) {
       opts.jurisdiction && typeof ns.jurisdiction === "function"
         ? ns.jurisdiction(opts.jurisdiction)
         : ns;
-    const name = shardName(env, opts.pool);
-    const stub = scoped.get(scoped.idFromName(name), { locationHint: EGRESS_HINT });
-    return await stub.fetch(url, init);
+    const first = shardName(env, opts.pool);
+    const res = await viaObject(scoped, first.name, url, init);
+    if (res.status !== 403 || !isReplayableBody(init)) return res;
+    // One retry on a 403, through a different shard. A placement is sticky, so a
+    // shard that landed in HKG refuses every Anthropic call until it is
+    // recreated; and Anthropic has refused single bursts from US colos too
+    // (jacob, MIA, 2026-11-22). A 403 means nothing was executed, so a replay is
+    // safe. The retry goes to the US jurisdiction when the runtime offers it,
+    // which is a hard location guarantee rather than a hint.
+    const second = shardName(env, opts.pool, first.index);
+    const usScoped = typeof ns.jurisdiction === "function" ? ns.jurisdiction("us") : scoped;
+    console.warn(`[aiEgress] 403 via ${first.name}, retrying once via ${second.name}`);
+    await res.body?.cancel().catch((err) => console.warn(`[aiEgress] body cancel: ${err.message}`));
+    return await viaObject(usScoped, second.name, url, init);
   } catch (err) {
     console.warn(`[aiEgress] object unreachable, falling back to direct fetch: ${err.message}`);
     return fetch(url, init);

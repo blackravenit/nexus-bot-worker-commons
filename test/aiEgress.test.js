@@ -329,3 +329,43 @@ test("an AI GET is never unpinned by the mail rule", async () => {
   await egressFetch({ AI_EGRESS: ns, WORKER_NAME: "robert-worker" }, "https://graph.microsoft.com/v1.0/x", {});
   assert.equal(seen.names.length, 1, "no pool means the rule does not apply");
 });
+
+test("egressFetch retries a 403 once through a different shard in the US jurisdiction", async () => {
+  let n = 0;
+  const { seen, ns } = fakeNamespace(async () => (++n === 1 ? new Response("no", { status: 403 }) : new Response("ok")));
+  const jurisdictions = [];
+  ns.jurisdiction = (j) => { jurisdictions.push(j); return ns; };
+  const env = { AI_GATEWAY_BOT: "jacob", AI_EGRESS: ns };
+  const { result, calls } = await withFetch(
+    async () => new Response("direct"),
+    () => egressFetch(env, "https://api.anthropic.com/v1/messages", { method: "POST", body: "{}" }),
+  );
+  assert.equal(await result.text(), "ok");
+  assert.equal(calls.length, 0);
+  assert.equal(seen.names.length, 2);
+  assert.notEqual(seen.names[0], seen.names[1], "retry must use another shard");
+  assert.deepEqual(jurisdictions, ["us"]);
+});
+
+test("egressFetch returns the second 403 rather than looping", async () => {
+  const { seen, ns } = fakeNamespace(async () => new Response("no", { status: 403 }));
+  const env = { AI_GATEWAY_BOT: "jacob", AI_EGRESS: ns };
+  const { result } = await withFetch(
+    async () => new Response("direct"),
+    () => egressFetch(env, "https://api.anthropic.com/v1/messages", { method: "POST", body: "{}" }),
+  );
+  assert.equal(result.status, 403);
+  assert.equal(seen.names.length, 2);
+});
+
+test("egressFetch never retries a 403 whose body was a stream", async () => {
+  const { seen, ns } = fakeNamespace(async () => new Response("no", { status: 403 }));
+  const env = { AI_GATEWAY_BOT: "jacob", AI_EGRESS: ns };
+  const body = new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode("{}")); c.close(); } });
+  const { result } = await withFetch(
+    async () => new Response("direct"),
+    () => egressFetch(env, "https://api.anthropic.com/v1/messages", { method: "POST", body, duplex: "half" }),
+  );
+  assert.equal(result.status, 403);
+  assert.equal(seen.names.length, 1);
+});
